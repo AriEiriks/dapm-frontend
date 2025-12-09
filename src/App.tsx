@@ -7,6 +7,7 @@ import Dashboard from "./pages/dashboard";
 import UserProvider from "./context/usersProvides";
 import OrgProvider from "./context/orgsProvider";
 import PeProvider from "./context/processingElementsProvider";
+import ExternalSourcesProvider from "./context/externalSourcesProvider";
 import AccessRequestProvider from "./context/accessRequestsProvider";
 import ProjectProvider from "./context/projectProvider";
 import PipelineProvider from "./context/pipelineProvider";
@@ -20,6 +21,7 @@ export default function App() {
         <UserProvider>
           <OrgProvider>
             <PeProvider>
+             <ExternalSourcesProvider>
               <AccessRequestProvider>
                 <ProjectProvider>
                   <PipelineProvider>
@@ -33,6 +35,7 @@ export default function App() {
                   </PipelineProvider>
                 </ProjectProvider>
               </AccessRequestProvider>
+             </ExternalSourcesProvider>
             </PeProvider>
           </OrgProvider>
         </UserProvider>

@@ -5,6 +5,7 @@ import Navbar from "../components/navbar";
 import Users from "./users";
 import Partners from "./partners";
 import ProcessingElements from "./processingElements";
+import ExternalSources from "./externalSources";
 import AccessRequests from "./accessRequest";
 import AccessRequestPage from "./accessRequest";
 import Projects from "./projects";
@@ -54,6 +55,7 @@ export default function Dashboard() {
                     <Route path="users" element={<Users />} />
                     <Route path="partners" element={<Partners />} />
                     <Route path="processing-elements" element={<ProcessingElements />} />
+                    <Route path="external-sources" element={<ExternalSources />} />
                     <Route path="access-requests" element={<AccessRequestPage />} />
                     <Route path="projects" element={<Projects />} />
                     {/* <Route path="projects/:projectName/*" element={<ProjectLayout />} /> */}
