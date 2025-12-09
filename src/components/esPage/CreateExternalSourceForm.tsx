@@ -1,9 +1,6 @@
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
-import CloudIcon from "@mui/icons-material/Cloud";
-import TopicIcon from "@mui/icons-material/Topic";
-import KeyIcon from "@mui/icons-material/VpnKey";
 import { useExternalSources } from "../../context/externalSourcesProvider";
 import { CreateExternalSourceRequest } from "../../api/externalSources";
 
@@ -19,27 +16,22 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
   const formik = useFormik({
     initialValues: {
       name: "",
-      bucket: "",
-      topics: "",
-      pollIntervalMs: "1000",
-      serviceAccountKeyFile: null as File | null,
+      kcql: "",
     },
     validationSchema: Yup.object({
       name: Yup.string().required("Connector name is required"),
-      bucket: Yup.string().required("Bucket name is required"),
-      topics: Yup.string().required("Topic(s) are required"),
-      pollIntervalMs: Yup.string().required("Poll interval is required"),
-      serviceAccountKeyFile: Yup.mixed().required("Service account key (.json) is required"),
+      kcql: Yup.string().required("KCQL is required"),
     }),
     onSubmit: async (values, { resetForm }) => {
       externalSources.setLoadingExternalSources(true);
 
       const payload: CreateExternalSourceRequest = {
         name: values.name,
-        bucket: values.bucket,
-        topics: values.topics,
-        pollIntervalMs: values.pollIntervalMs,
-        serviceAccountKeyFile: values.serviceAccountKeyFile!,
+        config: {
+          // Only the KCQL comes from the user for now.
+          // Backend, for now, handles connector.class, auth, project id, etc.
+          "connect.gcpstorage.kcql": values.kcql,
+        },
       };
 
       const result = await externalSources.addExternalSource(payload);
@@ -60,118 +52,51 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
       className="flex flex-col w-full py-1 signup"
       onSubmit={formik.handleSubmit}
     >
-      {/* Name & topics */}
-      <div className="flex justify-between flex-wrap">
-        <div className="sm:w-[48%] w-full flex flex-col mb-2">
-          <h4 className="text-sm font-bold text-[#ffffff4d]">Connector Name</h4>
-          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-            <TextFieldsIcon className="text-white" />
-            <input
-              type="text"
-              name="name"
-              className="bg-transparent text-white w-full ml-2 outline-none"
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              value={formik.values.name}
-            />
-          </div>
-          {formik.touched.name && formik.errors.name && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.name}
-            </div>
-          )}
-        </div>
-
-        <div className="sm:w-[48%] w-full flex flex-col mb-2">
-          <h4 className="text-sm font-bold text-[#ffffff4d]">Topics (comma-separated)</h4>
-          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-            <TopicIcon className="text-white" />
-            <input
-              type="text"
-              name="topics"
-              className="bg-transparent text-white w-full ml-2 outline-none"
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              value={formik.values.topics}
-            />
-          </div>
-          {formik.touched.topics && formik.errors.topics && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.topics}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bucket & poll interval */}
-      <div className="flex justify-between flex-wrap">
-        <div className="sm:w-[48%] w-full flex flex-col mb-2">
-          <h4 className="text-sm font-bold text-[#ffffff4d]">GCS Bucket</h4>
-          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-            <CloudIcon className="text-white" />
-            <input
-              type="text"
-              name="bucket"
-              className="bg-transparent text-white w-full ml-2 outline-none"
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              value={formik.values.bucket}
-            />
-          </div>
-          {formik.touched.bucket && formik.errors.bucket && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.bucket}
-            </div>
-          )}
-        </div>
-
-        <div className="sm:w-[48%] w-full flex flex-col mb-2">
-          <h4 className="text-sm font-bold text-[#ffffff4d]">Poll Interval (ms)</h4>
-          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-            <TextFieldsIcon className="text-white" />
-            <input
-              type="number"
-              name="pollIntervalMs"
-              className="bg-transparent text-white w-full ml-2 outline-none"
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              value={formik.values.pollIntervalMs}
-            />
-          </div>
-          {formik.touched.pollIntervalMs && formik.errors.pollIntervalMs && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.pollIntervalMs}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Service account JSON */}
-      <div className="w-full flex flex-col mb-2">
+      {/* Connector Name */}
+      <div className="w-full flex flex-col mb-4">
         <h4 className="text-sm font-bold text-[#ffffff4d]">
-          Service Account Key (.json)
+          Connector Name
         </h4>
         <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-          <KeyIcon className="text-white" />
+          <TextFieldsIcon className="text-white" />
           <input
-            type="file"
-            name="serviceAccountKeyFile"
-            accept="application/json"
-            className="text-white ml-2"
-            onChange={(e) =>
-              formik.setFieldValue(
-                "serviceAccountKeyFile",
-                e.currentTarget.files?.[0] || null
-              )
-            }
+            type="text"
+            name="name"
+            className="bg-transparent text-white w-full ml-2 outline-none"
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            value={formik.values.name}
           />
         </div>
-        {formik.touched.serviceAccountKeyFile &&
-          formik.errors.serviceAccountKeyFile && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.serviceAccountKeyFile as string}
-            </div>
-          )}
+        {formik.touched.name && formik.errors.name && (
+          <div className="text-red-500 text-xs mt-1">
+            {formik.errors.name}
+          </div>
+        )}
+      </div>
+
+      {/* KCQL */}
+      <div className="w-full flex flex-col mb-4">
+        <h4 className="text-sm font-bold text-[#ffffff4d]">
+          KCQL Statement
+        </h4>
+        <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-start rounded-md">
+          <TextFieldsIcon className="text-white mt-1" />
+          <textarea
+            name="kcql"
+            rows={4}
+            className="bg-transparent text-white w-full ml-2 outline-none resize-y"
+            placeholder="INSERT INTO dsb-topic SELECT * FROM dapm-streams-data:dsb/Lokalbane_940R/2025/11/05 STOREAS `json`;"
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            value={formik.values.kcql}
+          />
+        </div>
+        {formik.touched.kcql && formik.errors.kcql && (
+          <div className="text-red-500 text-xs mt-1">
+            {formik.errors.kcql}
+          </div>
+        )}
       </div>
 
       <div className="w-full flex justify-center mt-8">
