@@ -81,6 +81,24 @@ export default function ExternalSources() {
                     Topics: {source.topics || "-"}
                   </p>
                 </div>
+                <button
+                  className="ml-auto text-sm text-red-600 hover:underline disabled:opacity-50"
+                  disabled={externalSourcesCtx.deletingExternalSource}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const ok = window.confirm(`Delete connector "${source.name}"?`);
+                    if (!ok) return;
+
+                    const res = await externalSourcesCtx.deleteExternalSourceByName(source.name);
+                    if (!res.success) {
+                      alert(res.message);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             ))}
           </div>

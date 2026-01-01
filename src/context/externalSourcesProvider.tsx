@@ -10,6 +10,7 @@ import {
   getAllExternalSources,
   createExternalSource,
   CreateExternalSourceRequest,
+  deleteExternalSource,
 } from "../api/externalSources";
 
 interface ExternalSourcesContextType {
@@ -20,6 +21,8 @@ interface ExternalSourcesContextType {
   addExternalSource: (
     req: CreateExternalSourceRequest
   ) => Promise<{ success: boolean; message: string }>;
+  deleteExternalSourceByName: (name: string) => Promise<{ success: boolean; message: string }>;
+  deletingExternalSource: boolean;
 }
 
 const ExternalSourcesContext =
@@ -32,12 +35,12 @@ interface ExternalSourcesProviderProps {
 const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ children }) => {
   const [externalSources, setExternalSources] = useState<ExternalSource[] | null>(null);
   const [loadingExternalSources, setLoadingExternalSources] = useState(false);
+  const [deletingExternalSource, setDeletingExternalSource] = useState(false);
 
   async function getSources(domainName?: string) {
     try {
       setLoadingExternalSources(true);
 
-      // trying same as PeProvider: read domain from localStorage
       const safeOrgDomainName = localStorage.getItem("domain") || "";
       const response = await getAllExternalSources(safeOrgDomainName);
 
@@ -64,7 +67,6 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
   try {
     const safeOrgDomainName = localStorage.getItem("domain") || "";
     const response = await createExternalSource(safeOrgDomainName, req);
-    // optionally refresh list
     await getSources();
     return { success: true, message: response.data.message };
   } catch (err) {
@@ -84,6 +86,39 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
   }
 }
 
+async function deleteExternalSourceByName(
+    name: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      setDeletingExternalSource(true);
+
+      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      await deleteExternalSource(safeOrgDomainName, name);
+
+      // refresh list after delete
+      await getSources();
+
+      return { success: true, message: "External source connector deleted successfully" };
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        return {
+          success: false,
+          message:
+            (err.response?.data as any)?.message ||
+            (err.response?.data as any)?.error ||
+            err.message ||
+            "Delete external source failed",
+        };
+      }
+      return {
+        success: false,
+        message: "Delete external source failed due to unknown error",
+      };
+    } finally {
+      setDeletingExternalSource(false);
+    }
+  }
+
   return (
     <ExternalSourcesContext.Provider
       value={{
@@ -92,6 +127,8 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
         loadingExternalSources,
         setLoadingExternalSources,
         addExternalSource,
+        deleteExternalSourceByName,
+        deletingExternalSource,
       }}
     >
       {children}

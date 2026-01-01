@@ -29,3 +29,9 @@ export const createExternalSource = (
       baseURL: `http://localhost:${orgDomainName}`,
     }
   );
+
+export const deleteExternalSource = (orgDomainName: string, connectorName: string) =>
+  axiosInstance.delete<{ message?: string }>(
+    `/api/external-sources/connectors/${encodeURIComponent(connectorName)}`,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
