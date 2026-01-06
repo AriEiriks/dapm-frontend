@@ -17,6 +17,8 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
 
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<"form" | "raw">("form");
+  const [rawBody, setRawBody] = useState<string>("");
 
   const shortName = (clazz: string) => clazz.split(".").pop() || clazz;
 
@@ -104,113 +106,162 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
       className="flex flex-col w-full py-1 signup"
       onSubmit={formik.handleSubmit}
     >
-      {/* Connector Type */}
-  <div className="w-full flex flex-col mb-4">
-  <h4 className="text-sm font-bold text-[#ffffff4d]">Connector Type</h4>
 
-  <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-    <TextFieldsIcon className="text-white" />
-    <select
-      name="connectorClass"
-      className={[
-        "bg-transparent w-full ml-2 outline-none",
-        formik.values.connectorClass ? "text-white" : "text-[#ffffff4d]"
-      ].join(" ")}
-      onChange={formik.handleChange}
-      onBlur={formik.handleBlur}
-      value={formik.values.connectorClass}
-      disabled={pluginsLoading}
-    >
-      <option value="" disabled className="text-grey-500">
-        {pluginsLoading ? "Loading connector types…" : "Select a connector…"}
-      </option>
+      <div className="w-full flex items-center gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setViewMode("form")}
+          className={[
+            "px-4 py-2 rounded-md border-2 border-white",
+            viewMode === "form" ? "bg-[#15283c] text-white" : "bg-transparent text-[#ffffff4d]"
+          ].join(" ")}
+        >
+          Form
+        </button>
 
-      {groupedPlugins.source.length > 0 && (
-        <optgroup label="Source connectors" className="text-black bg-white">
-          {groupedPlugins.source.map((p) => (
-            <option key={p.clazz} value={p.clazz} className="text-black bg-white">
-              {shortName(p.clazz)}{p.version ? ` (${p.version})` : ""}
-            </option>
-          ))}
-        </optgroup>
-      )}
-
-      {groupedPlugins.sink.length > 0 && (
-        <optgroup label="Sink connectors" className="text-black bg-white">
-          {groupedPlugins.sink.map((p) => (
-            <option key={p.clazz} value={p.clazz} className="text-black bg-white">
-              {shortName(p.clazz)}{p.version ? ` (${p.version})` : ""}
-            </option>
-          ))}
-        </optgroup>
-      )}
-
-      {groupedPlugins.other.length > 0 && (
-        <optgroup label="Other">
-          {groupedPlugins.other.map((p) => (
-            <option key={p.clazz} value={p.clazz}>
-              {shortName(p.clazz)}{p.version ? ` (${p.version})` : ""}
-            </option>
-          ))}
-        </optgroup>
-      )}
-    </select>
-  </div>
-
-  {formik.touched.connectorClass && formik.errors.connectorClass && (
-    <div className="text-red-500 text-xs mt-1">
-      {formik.errors.connectorClass}
-    </div>
-  )}
-</div>
-
-
-      {/* Connector Name */}
-      <div className="w-full flex flex-col mb-4">
-        <h4 className="text-sm font-bold text-[#ffffff4d]">
-          Connector Name
-        </h4>
-        <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
-          <TextFieldsIcon className="text-white" />
-          <input
-            type="text"
-            name="name"
-            className="bg-transparent text-white w-full ml-2 outline-none"
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            value={formik.values.name}
-          />
-        </div>
-        {formik.touched.name && formik.errors.name && (
-          <div className="text-red-500 text-xs mt-1">
-            {formik.errors.name}
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => setViewMode("raw")}
+          className={[
+            "px-4 py-2 rounded-md border-2 border-white",
+            viewMode === "raw" ? "bg-[#15283c] text-white" : "bg-transparent text-[#ffffff4d]"
+          ].join(" ")}
+        >
+          Raw
+        </button>
       </div>
 
-      {/* KCQL */}
-      <div className="w-full flex flex-col mb-4">
-        <h4 className="text-sm font-bold text-[#ffffff4d]">
-          KCQL Statement
-        </h4>
-        <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-start rounded-md">
-          <TextFieldsIcon className="text-white mt-1" />
-          <textarea
-            name="kcql"
-            rows={4}
-            className="bg-transparent text-white w-full ml-2 outline-none resize-y"
-            placeholder="INSERT INTO dsb-topic SELECT * FROM dapm-streams-data:dsb/Lokalbane_940R/2025/11/05 STOREAS `json`;"
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            value={formik.values.kcql}
-          />
-        </div>
-        {formik.touched.kcql && formik.errors.kcql && (
-          <div className="text-red-500 text-xs mt-1">
-            {formik.errors.kcql}
+      {viewMode === "raw" ? (
+        // RAW VIEW
+        <div className="w-full flex flex-col mb-4">
+          <h4 className="text-sm font-bold text-[#ffffff4d]">
+            Raw connector body
+          </h4>
+
+          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-start rounded-md">
+            <TextFieldsIcon className="text-white mt-1" />
+            <textarea
+              name="rawBody"
+              rows={14}
+              className="bg-transparent text-white w-full ml-2 outline-none resize-y"
+              placeholder="{ ... }"
+              value={rawBody}
+              onChange={(e) => setRawBody(e.target.value)}
+            />
           </div>
-        )}
+        </div>
+
+      ) : (
+        // FORM VIEW
+        <>
+        {/* Connector Type */}
+        <div className="w-full flex flex-col mb-4">
+        <h4 className="text-sm font-bold text-[#ffffff4d]">Connector Type</h4>
+
+      <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
+        <TextFieldsIcon className="text-white" />
+        <select
+          name="connectorClass"
+          className={[
+            "bg-transparent w-full ml-2 outline-none",
+            formik.values.connectorClass ? "text-white" : "text-[#ffffff4d]"
+          ].join(" ")}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          value={formik.values.connectorClass}
+          disabled={pluginsLoading}
+        >
+          <option value="" disabled className="text-grey-500">
+            {pluginsLoading ? "Loading connector types…" : "Select a connector…"}
+          </option>
+
+          {groupedPlugins.source.length > 0 && (
+            <optgroup label="Source connectors" className="text-black bg-white">
+              {groupedPlugins.source.map((p) => (
+                <option key={p.clazz} value={p.clazz} className="text-black bg-white">
+                  {shortName(p.clazz)}{p.version ? ` (${p.version})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+
+          {groupedPlugins.sink.length > 0 && (
+            <optgroup label="Sink connectors" className="text-black bg-white">
+              {groupedPlugins.sink.map((p) => (
+                <option key={p.clazz} value={p.clazz} className="text-black bg-white">
+                  {shortName(p.clazz)}{p.version ? ` (${p.version})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+
+          {groupedPlugins.other.length > 0 && (
+            <optgroup label="Other">
+              {groupedPlugins.other.map((p) => (
+                <option key={p.clazz} value={p.clazz}>
+                  {shortName(p.clazz)}{p.version ? ` (${p.version})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
       </div>
+
+      {formik.touched.connectorClass && formik.errors.connectorClass && (
+        <div className="text-red-500 text-xs mt-1">
+          {formik.errors.connectorClass}
+        </div>
+      )}
+        </div>
+
+
+        {/* Connector Name */}
+        <div className="w-full flex flex-col mb-4">
+          <h4 className="text-sm font-bold text-[#ffffff4d]">
+            Connector Name
+          </h4>
+          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
+            <TextFieldsIcon className="text-white" />
+            <input
+              type="text"
+              name="name"
+              className="bg-transparent text-white w-full ml-2 outline-none"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.name}
+            />
+          </div>
+          {formik.touched.name && formik.errors.name && (
+            <div className="text-red-500 text-xs mt-1">
+              {formik.errors.name}
+            </div>
+          )}
+        </div>
+
+        {/* KCQL */}
+        <div className="w-full flex flex-col mb-4">
+          <h4 className="text-sm font-bold text-[#ffffff4d]">
+            KCQL Statement
+          </h4>
+          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-start rounded-md">
+            <TextFieldsIcon className="text-white mt-1" />
+            <textarea
+              name="kcql"
+              rows={4}
+              className="bg-transparent text-white w-full ml-2 outline-none resize-y"
+              placeholder="INSERT INTO dsb-topic SELECT * FROM dapm-streams-data:dsb/Lokalbane_940R/2025/11/05 STOREAS `json`;"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.kcql}
+            />
+          </div>
+          {formik.touched.kcql && formik.errors.kcql && (
+            <div className="text-red-500 text-xs mt-1">
+              {formik.errors.kcql}
+            </div>
+          )}
+        </div>
+
 
       <div className="w-full flex justify-center mt-8">
         <button
@@ -220,6 +271,8 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
           CREATE
         </button>
       </div>
+      </>
+  )}
     </form>
   );
 };
