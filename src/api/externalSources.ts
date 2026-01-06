@@ -12,6 +12,12 @@ export interface CreateExternalSourceRequest {
   config: Record<string, string>;
 }
 
+export interface ConnectorPlugin {
+  clazz: string;
+  type?: string;
+  version?: string | null;
+}
+
 export const getAllExternalSources = (orgDomainName: string) =>
   axiosInstance.get<ExternalSource[]>(
     "/api/external-sources",
@@ -33,5 +39,11 @@ export const createExternalSource = (
 export const deleteExternalSource = (orgDomainName: string, connectorName: string) =>
   axiosInstance.delete<{ message?: string }>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}`,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
+
+export const getConnectorPlugins = (orgDomainName: string) =>
+  axiosInstance.get<ConnectorPlugin[]>(
+    "/api/external-sources/plugins",
     { baseURL: `http://localhost:${orgDomainName}` }
   );

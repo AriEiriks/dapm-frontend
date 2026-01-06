@@ -11,6 +11,8 @@ import {
   createExternalSource,
   CreateExternalSourceRequest,
   deleteExternalSource,
+  getConnectorPlugins,
+  ConnectorPlugin,
 } from "../api/externalSources";
 
 interface ExternalSourcesContextType {
@@ -23,6 +25,7 @@ interface ExternalSourcesContextType {
   ) => Promise<{ success: boolean; message: string }>;
   deleteExternalSourceByName: (name: string) => Promise<{ success: boolean; message: string }>;
   deletingExternalSource: boolean;
+  getConnectorPlugins: () => Promise<ConnectorPlugin[]>;
 }
 
 const ExternalSourcesContext =
@@ -119,6 +122,19 @@ async function deleteExternalSourceByName(
     }
   }
 
+  async function fetchConnectorPlugins(): Promise<ConnectorPlugin[]> {
+    try {
+      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      const response = await getConnectorPlugins(safeOrgDomainName);
+
+      return (response.data || []).filter(
+        (p) => !p?.clazz?.startsWith("org.apache.kafka.connect.mirror.")
+      );
+    } catch (err) {
+      return [];
+    }
+  }
+
   return (
     <ExternalSourcesContext.Provider
       value={{
@@ -129,6 +145,7 @@ async function deleteExternalSourceByName(
         addExternalSource,
         deleteExternalSourceByName,
         deletingExternalSource,
+        getConnectorPlugins: fetchConnectorPlugins,
       }}
     >
       {children}
