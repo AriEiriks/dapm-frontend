@@ -18,6 +18,18 @@ export interface ConnectorPlugin {
   version?: string | null;
 }
 
+export interface ConnectorConfigDef {
+  name: string;
+  type?: string;
+  required?: boolean;
+  default_value?: string | null;
+  importance?: string;
+  documentation?: string;
+  group?: string;
+  order?: number;
+  [key: string]: any; // allow extra fields without breaking
+}
+
 export const getAllExternalSources = (orgDomainName: string) =>
   axiosInstance.get<ExternalSource[]>(
     "/api/external-sources",
@@ -45,5 +57,15 @@ export const deleteExternalSource = (orgDomainName: string, connectorName: strin
 export const getConnectorPlugins = (orgDomainName: string) =>
   axiosInstance.get<ConnectorPlugin[]>(
     "/api/external-sources/plugins",
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
+
+
+export const getConnectorPluginConfigDefs = (
+  orgDomainName: string,
+  connectorClass: string
+) =>
+  axiosInstance.get<ConnectorConfigDef[]>(
+    `/api/external-sources/plugins/${encodeURIComponent(connectorClass)}/config-defs`,
     { baseURL: `http://localhost:${orgDomainName}` }
   );

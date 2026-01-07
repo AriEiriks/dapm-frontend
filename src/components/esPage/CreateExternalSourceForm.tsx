@@ -2,9 +2,8 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 import { useExternalSources } from "../../context/externalSourcesProvider";
-import { CreateExternalSourceRequest } from "../../api/externalSources";
+import { CreateExternalSourceRequest, ConnectorPlugin, ConnectorConfigDef } from "../../api/externalSources";
 import { useEffect, useMemo, useState } from "react";
-import { ConnectorPlugin } from "../../api/externalSources";
 
 interface CreateExternalSourceFormProps {
   setOpenExternalSourcePopup: (value: boolean) => void;
@@ -18,7 +17,12 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"form" | "raw">("form");
+
+  const [configDefs, setConfigDefs] = useState<ConnectorConfigDef[]>([]);
+  const [configDefsLoading, setConfigDefsLoading] = useState(false);
+
   const [rawBody, setRawBody] = useState<string>("");
+  const [rawError, setRawError] = useState<string | null>(null);
 
   const shortName = (clazz: string) => clazz.split(".").pop() || clazz;
 
@@ -63,29 +67,59 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
     return { source, sink, other };
   }, [plugins]);
 
+  // REQUIRED config for now
+  const requiredDefs = useMemo(() => {
+    return (configDefs || []).filter((d) => d.required === true);
+  }, [configDefs]);
+
+  const buildRequiredOnlyConfig = (allConfig: Record<string, string>, connectorClass: string) => {
+    const requiredKeys = new Set(requiredDefs.map((d) => d.name));
+    const picked: Record<string, string> = {};
+
+    if (connectorClass) picked["connector.class"] = connectorClass;
+
+    for (const k of Object.keys(allConfig || {})) {
+      if (requiredKeys.has(k)) picked[k] = allConfig[k];
+    }
+
+    for (const d of requiredDefs) {
+      if (picked[d.name] === undefined) {
+        picked[d.name] = (d.default_value ?? "") as string;
+      }
+    }
+
+    return picked;
+  };
+
   const formik = useFormik({
     initialValues: {
       name: "",
-      kcql: "",
       connectorClass: "",
+      config: {} as Record<string, string>,
     },
     validationSchema: Yup.object({
       name: Yup.string().required("Connector name is required"),
-      kcql: Yup.string().required("KCQL is required"),
       connectorClass: Yup.string().required("Connector type is required"),
+
     }),
     onSubmit: async (values, { resetForm }) => {
       externalSources.setLoadingExternalSources(true);
 
+      const requiredOnlyConfig = buildRequiredOnlyConfig(values.config, values.connectorClass);
+
+      const missing = requiredDefs
+        .map((d) => d.name)
+        .filter((k) => !requiredOnlyConfig[k] || requiredOnlyConfig[k].trim() === "");
+
+      if (missing.length > 0) {
+        alert("Please fill required fields:\n" + missing.join("\n"));
+        externalSources.setLoadingExternalSources(false);
+        return;
+      }
+
       const payload: CreateExternalSourceRequest = {
         name: values.name,
-        config: {
-          // Only the KCQL comes from the user for now.
-          // Backend, for now, handles connector.class, auth, project id, etc.
-          "connect.gcpstorage.kcql": values.kcql,
-
-          "connector.class": values.connectorClass,
-        },
+        config: requiredOnlyConfig,
       };
 
       const result = await externalSources.addExternalSource(payload);
@@ -93,6 +127,9 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
       if (result.success) {
         setOpenExternalSourcePopup(false);
         resetForm();
+        setConfigDefs([]); //reset schema when closing
+        setRawBody("");
+        setRawError(null);
       } else {
         alert("Create external source failed: " + result.message);
       }
@@ -100,6 +137,86 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
       externalSources.setLoadingExternalSources(false);
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDefs() {
+      const clazz = formik.values.connectorClass;
+      if (!clazz) {
+        setConfigDefs([]);
+        return;
+      }
+
+      setConfigDefsLoading(true);
+      try {
+        const defs = await externalSources.getConnectorPluginConfigDefs(clazz);
+        if (cancelled) return;
+
+        setConfigDefs(defs || []);
+
+        for (const d of (defs || []).filter((x) => x.required === true)) {
+          const key = d.name;
+          const current = formik.values.config[key];
+          if (current === undefined) {
+            const next = (d.default_value ?? "") as string;
+            formik.setFieldValue(`config.${key}`, next, false);
+          }
+        }
+      } finally {
+        if (!cancelled) setConfigDefsLoading(false);
+      }
+    }
+
+    loadDefs();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.connectorClass]);
+
+
+  useEffect(() => {
+    if (viewMode !== "raw") return;
+
+    const requiredOnly = buildRequiredOnlyConfig(formik.values.config, formik.values.connectorClass);
+    const next = JSON.stringify({ name: formik.values.name, config: requiredOnly }, null, 2);
+
+    setRawBody(next);
+    setRawError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, formik.values.name, formik.values.connectorClass, requiredDefs]);
+
+  const onRawChange = (text: string) => {
+    setRawBody(text);
+
+    try {
+      const parsed = JSON.parse(text);
+
+      if (parsed && typeof parsed === "object") {
+        if (typeof parsed.name === "string") {
+          formik.setFieldValue("name", parsed.name, false);
+        }
+        if (parsed.config && typeof parsed.config === "object") {
+          const requiredKeys = new Set(requiredDefs.map((d) => d.name));
+          for (const [k, v] of Object.entries(parsed.config)) {
+            if (k === "connector.class") {
+              if (typeof v === "string") formik.setFieldValue("connectorClass", v, false);
+              continue;
+            }
+            if (requiredKeys.has(k)) {
+              formik.setFieldValue(`config.${k}`, String(v ?? ""), false);
+            }
+          }
+        }
+      }
+
+      setRawError(null);
+    } catch (e: any) {
+      setRawError("Invalid JSON (not saved to form until fixed).");
+    }
+  };
+
 
   return (
     <form
@@ -146,7 +263,7 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
               className="bg-transparent text-white w-full ml-2 outline-none resize-y"
               placeholder="{ ... }"
               value={rawBody}
-              onChange={(e) => setRawBody(e.target.value)}
+              onChange={(e) => onRawChange(e.target.value)}
             />
           </div>
         </div>
@@ -238,41 +355,71 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
           )}
         </div>
 
-        {/* KCQL */}
-        <div className="w-full flex flex-col mb-4">
-          <h4 className="text-sm font-bold text-[#ffffff4d]">
-            KCQL Statement
-          </h4>
-          <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-start rounded-md">
-            <TextFieldsIcon className="text-white mt-1" />
-            <textarea
-              name="kcql"
-              rows={4}
-              className="bg-transparent text-white w-full ml-2 outline-none resize-y"
-              placeholder="INSERT INTO dsb-topic SELECT * FROM dapm-streams-data:dsb/Lokalbane_940R/2025/11/05 STOREAS `json`;"
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              value={formik.values.kcql}
-            />
+        {/* ADDED: Required config fields (from configDefs filtered in frontend) */}
+          <div className="w-full flex flex-col mb-4">
+            <h4 className="text-sm font-bold text-[#ffffff4d]">
+              Required configuration
+            </h4>
+
+            {!formik.values.connectorClass ? (
+              <div className="text-xs text-[#ffffff4d]">
+                Select a connector type to load required fields.
+              </div>
+            ) : configDefsLoading ? (
+              <div className="text-xs text-[#ffffff4d]">
+                Loading required fields…
+              </div>
+            ) : requiredDefs.length === 0 ? (
+              <div className="text-xs text-[#ffffff4d]">
+                No required fields reported by the connector (besides connector.class).
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 mt-2">
+                {requiredDefs
+                  // UPDATED: don't render connector.class here; dropdown handles it
+                  .filter((d) => d.name !== "connector.class")
+                  .map((d) => (
+                    <div key={d.name} className="w-full flex flex-col">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#ffffff4d] font-bold">
+                          {d.name}
+                        </span>
+                      </div>
+
+                      <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
+                        <TextFieldsIcon className="text-white" />
+                        <input
+                          type="text"
+                          name={`config.${d.name}`}
+                          className="bg-transparent text-white w-full ml-2 outline-none"
+                          value={formik.values.config[d.name] ?? ""}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                          placeholder={d.default_value ?? ""}
+                        />
+                      </div>
+
+                      {d.documentation && (
+                        <div className="text-[11px] text-[#ffffff4d] mt-1">
+                          {d.documentation}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
-          {formik.touched.kcql && formik.errors.kcql && (
-            <div className="text-red-500 text-xs mt-1">
-              {formik.errors.kcql}
-            </div>
-          )}
-        </div>
 
-
-      <div className="w-full flex justify-center mt-8">
-        <button
-          type="submit"
-          className="text-white text-xl sm:w-fit w-full sm:px-10 p-2 px-6 bg-[#15283c] hover:bg-[#ff5722] border-2 border-white rounded-md"
-        >
-          CREATE
-        </button>
-      </div>
-      </>
-  )}
+          <div className="w-full flex justify-center mt-8">
+            <button
+              type="submit"
+              className="text-white text-xl sm:w-fit w-full sm:px-10 p-2 px-6 bg-[#15283c] hover:bg-[#ff5722] border-2 border-white rounded-md"
+            >
+              CREATE
+            </button>
+          </div>
+        </>
+      )}
     </form>
   );
 };

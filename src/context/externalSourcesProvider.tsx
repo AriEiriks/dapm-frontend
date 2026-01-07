@@ -13,6 +13,8 @@ import {
   deleteExternalSource,
   getConnectorPlugins,
   ConnectorPlugin,
+  getConnectorPluginConfigDefs,
+  ConnectorConfigDef,
 } from "../api/externalSources";
 
 interface ExternalSourcesContextType {
@@ -26,6 +28,7 @@ interface ExternalSourcesContextType {
   deleteExternalSourceByName: (name: string) => Promise<{ success: boolean; message: string }>;
   deletingExternalSource: boolean;
   getConnectorPlugins: () => Promise<ConnectorPlugin[]>;
+  getConnectorPluginConfigDefs: (connectorClass: string) => Promise<ConnectorConfigDef[]>;
 }
 
 const ExternalSourcesContext =
@@ -135,6 +138,17 @@ async function deleteExternalSourceByName(
     }
   }
 
+  
+  async function fetchConnectorPluginConfigDefs(connectorClass: string): Promise<ConnectorConfigDef[]> {
+    try {
+      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      const response = await getConnectorPluginConfigDefs(safeOrgDomainName, connectorClass);
+      return response.data || [];
+    } catch (err) {
+      return [];
+    }
+  }
+
   return (
     <ExternalSourcesContext.Provider
       value={{
@@ -146,6 +160,7 @@ async function deleteExternalSourceByName(
         deleteExternalSourceByName,
         deletingExternalSource,
         getConnectorPlugins: fetchConnectorPlugins,
+        getConnectorPluginConfigDefs: fetchConnectorPluginConfigDefs,
       }}
     >
       {children}
