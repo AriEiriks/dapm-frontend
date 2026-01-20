@@ -5,12 +5,19 @@ export interface ExternalSource {
   type: string;
   connectorClass: string;
   topics: string;
+  state?: string;
 }
 
 export interface CreateExternalSourceRequest {
   name: string;
   config: Record<string, string>;
 }
+
+export interface ConnectorStatusResponse {
+  name: string;
+  state: string;
+}
+
 
 export interface ConnectorPlugin {
   clazz: string;
@@ -56,12 +63,34 @@ export const deleteExternalSource = (orgDomainName: string, connectorName: strin
     { baseURL: `http://localhost:${orgDomainName}` }
   );
 
+export const getExternalSourceConnectorStatus = (
+  orgDomainName: string,
+  connectorName: string
+) =>
+  axiosInstance.get<ConnectorStatusResponse>(
+    `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/status`,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
+
+export const pauseExternalSourceConnector = (orgDomainName: string, connectorName: string) =>
+  axiosInstance.put<void>(
+    `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/pause`,
+    null,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
+
+export const resumeExternalSourceConnector = (orgDomainName: string, connectorName: string) =>
+  axiosInstance.put<void>(
+    `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/resume`,
+    null,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
+
 export const getConnectorPlugins = (orgDomainName: string) =>
   axiosInstance.get<ConnectorPlugin[]>(
     "/api/external-sources/plugins",
     { baseURL: `http://localhost:${orgDomainName}` }
   );
-
 
 export const getConnectorPluginConfigDefs = (
   orgDomainName: string,

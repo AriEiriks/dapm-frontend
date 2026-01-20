@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import CloseIcon from "@mui/icons-material/Close";
+import PauseIcon from "@mui/icons-material/Pause";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
 import { useExternalSources } from "../context/externalSourcesProvider";
 import { ExternalSource } from "../api/externalSources";
@@ -15,12 +17,48 @@ export default function ExternalSources() {
   const [editingConfig, setEditingConfig] = useState<Record<string, string> | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
 
+  const [connectorStates, setConnectorStates] = useState<Record<string, string>>({});
+
+  const [togglingConnector, setTogglingConnector] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     externalSourcesCtx.getSources();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const externalSources = externalSourcesCtx.externalSources ?? [];
+
+  useEffect(() => {
+    const run = async () => {
+      if (!externalSources.length) {
+        setConnectorStates({});
+        return;
+      }
+
+      try {
+        const entries = await Promise.all(
+          externalSources.map(async (src) => {
+            try {
+              const status = await externalSourcesCtx.getExternalSourceStatus(src.name);
+              return [src.name, status.state] as const;
+            } catch {
+              return [src.name, "UNKNOWN"] as const;
+            }
+          })
+        );
+
+        setConnectorStates((prev) => {
+          const next = { ...prev };
+          for (const [name, state] of entries) next[name] = state;
+          return next;
+        });
+      } catch {
+      }
+    };
+
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalSources.length]);
 
   const closeEditPopup = () => {
     setOpenEditPopup(false);
@@ -29,11 +67,22 @@ export default function ExternalSources() {
   };
 
   function getShortConnectorClass(connectorClass?: string) {
-  if (!connectorClass) return "-";
+    if (!connectorClass) return "-";
 
-  // Only the name after the part after the last dot
-  return connectorClass.split(".").pop() ?? connectorClass;
-}
+    return connectorClass.split(".").pop() ?? connectorClass;
+  }
+
+  function normalizeState(state?: string) {
+    return (state ?? "").trim().toUpperCase();
+  }
+
+  function statusDotClass(state?: string) {
+    const s = normalizeState(state);
+    if (s === "RUNNING") return "bg-green-500";
+    if (s === "PAUSED") return "bg-yellow-500";
+    // FAILED/UNKNOWN -> red
+    return "bg-red-500";
+  }
 
   return (
     <div className="w-full h-screen overflow-y-auto pb-10">
@@ -68,6 +117,15 @@ export default function ExternalSources() {
                 <div className="flex-1 2xl:text-lg xl:text-base overflow-hidden">
                   <p className="font-medium truncate" title={source.name}>
                     <span className="text-[#757575] font-normal">Name: </span>
+
+                    <span
+                      className={[
+                        "inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle",
+                        statusDotClass(connectorStates[source.name] ?? source.state),
+                      ].join(" ")}
+                      title={normalizeState(connectorStates[source.name] ?? source.state) || "UNKNOWN"}
+                    />
+
                     {source.name}
                   </p>
                   <p className="text-sm text-[#757575] truncate" title={source.connectorClass}>
@@ -78,6 +136,59 @@ export default function ExternalSources() {
 
                 {/* Action buttons */}
                 <div className="ml-auto flex flex-col gap-2 items-end">
+
+                  <button
+                    type="button"
+                    className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                    title={
+                      normalizeState(connectorStates[source.name] ?? source.state) === "PAUSED"
+                        ? "Resume"
+                        : "Pause"
+                    }
+                    disabled={!!togglingConnector[source.name]}
+
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+
+                      const currentState = normalizeState(connectorStates[source.name] ?? source.state);
+                      const isPaused = currentState === "PAUSED";
+
+                      setTogglingConnector((prev) => ({ ...prev, [source.name]: true }));
+                      try {
+                        if (isPaused) {
+                          await externalSourcesCtx.resumeExternalSource(source.name);
+                        } else {
+                          await externalSourcesCtx.pauseExternalSource(source.name);
+                        }
+
+                        await externalSourcesCtx.getSources();
+
+                        try {
+                          const status = await externalSourcesCtx.getExternalSourceStatus(source.name);
+                          setConnectorStates((prev) => ({ ...prev, [source.name]: status.state }));
+                        } catch {
+                          setConnectorStates((prev) => ({ ...prev, [source.name]: "UNKNOWN" }));
+                        }
+                      } catch {
+                        alert("Failed to toggle connector (pause/resume).");
+                      } finally {
+                        setTogglingConnector((prev) => {
+                          const next = { ...prev };
+                          delete next[source.name];
+                          return next;
+                        });
+                      }
+                    }}
+
+                  >
+                    {normalizeState(connectorStates[source.name] ?? source.state) === "PAUSED" ? (
+                      <PlayArrowIcon fontSize="small" />
+                    ) : (
+                      <PauseIcon fontSize="small" />
+                    )}
+                  </button>
+
                   <button
                     className="text-sm text-blue-600 hover:underline disabled:opacity-50"
                     disabled={loadingEdit}

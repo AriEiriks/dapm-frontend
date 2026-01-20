@@ -18,6 +18,10 @@ import {
   ConnectorConfig,
   getExternalSourceConnectorConfig,
   updateExternalSourceConnectorConfig,
+  ConnectorStatusResponse,
+  getExternalSourceConnectorStatus,
+  pauseExternalSourceConnector,
+  resumeExternalSourceConnector,
 } from "../api/externalSources";
 
 interface ExternalSourcesContextType {
@@ -37,6 +41,9 @@ interface ExternalSourcesContextType {
     connectorName: string,
     config: ConnectorConfig
   ) => Promise<{ success: boolean; message: string }>;
+  getExternalSourceStatus: (connectorName: string) => Promise<ConnectorStatusResponse>;
+  pauseExternalSource: (connectorName: string) => Promise<void>;
+  resumeExternalSource: (connectorName: string) => Promise<void>;
 }
 
 const ExternalSourcesContext =
@@ -188,6 +195,22 @@ async function deleteExternalSourceByName(
     }
   }
 
+  async function getExternalSourceStatus(connectorName: string) {
+    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const res = await getExternalSourceConnectorStatus(safeOrgDomainName, connectorName);
+    return res.data; // { name, state }
+  }
+
+  async function pauseExternalSource(connectorName: string) {
+    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    await pauseExternalSourceConnector(safeOrgDomainName, connectorName);
+  }
+
+  async function resumeExternalSource(connectorName: string) {
+    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    await resumeExternalSourceConnector(safeOrgDomainName, connectorName);
+  }
+
   return (
     <ExternalSourcesContext.Provider
       value={{
@@ -202,6 +225,9 @@ async function deleteExternalSourceByName(
         getConnectorPluginConfigDefs: fetchConnectorPluginConfigDefs,
         getExternalSourceConfig,
         updateExternalSourceConfig,
+        getExternalSourceStatus,
+        pauseExternalSource,
+        resumeExternalSource,
       }}
     >
       {children}
