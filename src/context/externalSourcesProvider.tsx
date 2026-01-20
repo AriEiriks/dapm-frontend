@@ -15,6 +15,9 @@ import {
   ConnectorPlugin,
   getConnectorPluginConfigDefs,
   ConnectorConfigDef,
+  ConnectorConfig,
+  getExternalSourceConnectorConfig,
+  updateExternalSourceConnectorConfig,
 } from "../api/externalSources";
 
 interface ExternalSourcesContextType {
@@ -29,6 +32,11 @@ interface ExternalSourcesContextType {
   deletingExternalSource: boolean;
   getConnectorPlugins: () => Promise<ConnectorPlugin[]>;
   getConnectorPluginConfigDefs: (connectorClass: string) => Promise<ConnectorConfigDef[]>;
+  getExternalSourceConfig: (connectorName: string) => Promise<ConnectorConfig>;
+  updateExternalSourceConfig: (
+    connectorName: string,
+    config: ConnectorConfig
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 const ExternalSourcesContext =
@@ -101,7 +109,6 @@ async function deleteExternalSourceByName(
       const safeOrgDomainName = localStorage.getItem("domain") || "";
       await deleteExternalSource(safeOrgDomainName, name);
 
-      // refresh list after delete
       await getSources();
 
       return { success: true, message: "External source connector deleted successfully" };
@@ -149,6 +156,38 @@ async function deleteExternalSourceByName(
     }
   }
 
+  async function getExternalSourceConfig(connectorName: string): Promise<ConnectorConfig> {
+    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const response = await getExternalSourceConnectorConfig(safeOrgDomainName, connectorName);
+    return response.data || {};
+  }
+
+  async function updateExternalSourceConfig(
+    connectorName: string,
+    config: ConnectorConfig
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      await updateExternalSourceConnectorConfig(safeOrgDomainName, connectorName, config);
+
+      await getSources();
+
+      return { success: true, message: "Connector updated successfully" };
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        return {
+          success: false,
+          message:
+            (err.response?.data as any)?.message ||
+            (err.response?.data as any)?.error ||
+            err.message ||
+            "Update connector failed",
+        };
+      }
+      return { success: false, message: "Update connector failed due to unknown error" };
+    }
+  }
+
   return (
     <ExternalSourcesContext.Provider
       value={{
@@ -161,6 +200,8 @@ async function deleteExternalSourceByName(
         deletingExternalSource,
         getConnectorPlugins: fetchConnectorPlugins,
         getConnectorPluginConfigDefs: fetchConnectorPluginConfigDefs,
+        getExternalSourceConfig,
+        updateExternalSourceConfig,
       }}
     >
       {children}

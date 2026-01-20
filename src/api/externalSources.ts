@@ -27,8 +27,10 @@ export interface ConnectorConfigDef {
   documentation?: string;
   group?: string;
   order?: number;
-  [key: string]: any; // allow extra fields without breaking
+  [key: string]: any;
 }
+
+export type ConnectorConfig = Record<string, string>;
 
 export const getAllExternalSources = (orgDomainName: string) =>
   axiosInstance.get<ExternalSource[]>(
@@ -69,3 +71,23 @@ export const getConnectorPluginConfigDefs = (
     `/api/external-sources/plugins/${encodeURIComponent(connectorClass)}/config-defs`,
     { baseURL: `http://localhost:${orgDomainName}` }
   );
+
+export const getExternalSourceConnectorConfig = (
+  orgDomainName: string,
+  connectorName: string
+) =>
+  axiosInstance.get<ConnectorConfig>(
+    `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/config`,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );
+
+export const updateExternalSourceConnectorConfig = (
+  orgDomainName: string,
+  connectorName: string,
+  config: ConnectorConfig
+) =>
+  axiosInstance.put<ConnectorConfig>(
+    `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/config`,
+    config,
+    { baseURL: `http://localhost:${orgDomainName}` }
+  );  
