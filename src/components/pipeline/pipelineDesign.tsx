@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useKafka } from "../../context/KafkaProvider";
+import { useExternalSources } from "../../context/externalSourcesProvider";
 
 import {
   ReactFlow,
@@ -211,12 +211,18 @@ export default function PipelineDesign() {
   const [edges, setEdges] = useState<Edge[]>(draft?.graph?.edges || []);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const { validatePipeline } = usePipeline();
-  const {
-    topics: kafkaTopics,
-    topicsLoading,
-    topicsError,
-    refreshTopics,
-  } = useKafka()
+  
+  const externalSourcesCtx = useExternalSources();
+
+const sourceConnectors = useMemo(() => {
+  const all = externalSourcesCtx.externalSources ?? [];
+  return all.filter((c) => (c.type ?? "").toLowerCase() === "source");
+}, [externalSourcesCtx.externalSources]);
+
+const getPrimaryTopic = (topics?: string) => {
+  const t = (topics ?? "").split(",")[0]?.trim();
+  return t || "";
+};
 
   // when draft changes (e.g., after refreshPipelines), seed local graph state
   // Only run when switching to a new draft
@@ -234,13 +240,9 @@ export default function PipelineDesign() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    refreshTopics(false);
-  }, [refreshTopics]);
-
-  useEffect(() => {
-    console.log("refreshTopics effect fired");
-    refreshTopics(false);
-  }, [refreshTopics]);
+    externalSourcesCtx.getSources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (projectName) {
@@ -352,24 +354,30 @@ export default function PipelineDesign() {
 
             {isKafkaTopicKey(fullKey) ? (
               <select
-                disabled={draft?.status !== "draft" || topicsLoading || !!topicsError}
+                disabled={draft?.status !== "draft" || externalSourcesCtx.loadingExternalSources}
                 className="w-full p-2 rounded text-black"
                 value={val}
                 onChange={(e) => updateSelectedNodeConfig(fullKey, e.target.value)}
               >
                 <option value="">
-                  {topicsLoading
-                    ? "Loading topics…"
-                    : topicsError
-                    ? "Failed to load topics"
-                    : "Select a topic"}
+                  {externalSourcesCtx.loadingExternalSources
+                    ? "Loading source connectors…"
+                    : "Select a source connector"}
                 </option>
 
-                {kafkaTopics.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
+                {sourceConnectors.map((c) => {
+                  const topicValue = getPrimaryTopic(c.topics);
+                  return (
+                    <option
+                      key={c.name}
+                      value={topicValue}
+                      disabled={!topicValue}
+                      title={topicValue ? `Publishes to: ${topicValue}` : "No topic detected"}
+                    >
+                      {c.name}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <input
@@ -391,9 +399,8 @@ export default function PipelineDesign() {
     [
       selectedNode,
       draft?.status,
-      topicsLoading,
-      topicsError,
-      kafkaTopics,
+      externalSourcesCtx.loadingExternalSources,
+      sourceConnectors,
       updateSelectedNodeConfig,
     ]
   );

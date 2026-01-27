@@ -132,6 +132,15 @@ export default function ExternalSources() {
                     <span className="font-medium text-[#757575]">Connector: </span>
                     {getShortConnectorClass(source.connectorClass)}
                   </p>
+                  <p className="text-sm text-[#757575] truncate" title={source.type}>
+                    <span className="font-medium text-[#757575]">Type: </span>
+                    {(source.type ?? "-").toString().toUpperCase()}
+                  </p>
+
+                  <p className="text-sm text-[#757575] truncate" title={source.topics || "-"}>
+                    <span className="font-medium text-[#757575]">Topic: </span>
+                    {source.topics?.trim() ? source.topics : "-"}
+                  </p>
                 </div>
 
                 {/* Action buttons */}
