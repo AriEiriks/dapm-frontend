@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useKafka } from "../../context/KafkaProvider";
+
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -209,6 +211,12 @@ export default function PipelineDesign() {
   const [edges, setEdges] = useState<Edge[]>(draft?.graph?.edges || []);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const { validatePipeline } = usePipeline();
+  const {
+    topics: kafkaTopics,
+    topicsLoading,
+    topicsError,
+    refreshTopics,
+  } = useKafka()
 
   // when draft changes (e.g., after refreshPipelines), seed local graph state
   // Only run when switching to a new draft
@@ -225,7 +233,14 @@ export default function PipelineDesign() {
     pe.getPes();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  
+  useEffect(() => {
+    refreshTopics(false);
+  }, [refreshTopics]);
+
+  useEffect(() => {
+    console.log("refreshTopics effect fired");
+    refreshTopics(false);
+  }, [refreshTopics]);
 
   useEffect(() => {
     if (projectName) {
@@ -291,6 +306,16 @@ export default function PipelineDesign() {
     );
   };
 
+  const isKafkaTopicKey = (fullKey: string) => {
+    const k = fullKey.toLowerCase();
+    return (
+      k === "topic" ||
+      k.endsWith(".topic") ||
+      k.includes("eventsource.topic") ||
+      k.includes("kafka.topic")
+    );
+  };
+
   const renderSchema = useCallback(
     (schema: any, basePath: string[] = []) => {
       if (!schema || !schema.properties) return null;
@@ -322,15 +347,40 @@ export default function PipelineDesign() {
                   <span className="ml-1 text-red-300">*</span>
                 )}
             </label>
-            <input
-            readOnly={draft?.status !== "draft"}
-              type={def.type === "number" ? "number" : "text"}
-              className="w-full p-2 rounded text-black"
-              value={val}
-              onChange={(e) =>
-                updateSelectedNodeConfig(fullKey, e.target.value)
-              }
-            />
+
+
+
+            {isKafkaTopicKey(fullKey) ? (
+              <select
+                disabled={draft?.status !== "draft" || topicsLoading || !!topicsError}
+                className="w-full p-2 rounded text-black"
+                value={val}
+                onChange={(e) => updateSelectedNodeConfig(fullKey, e.target.value)}
+              >
+                <option value="">
+                  {topicsLoading
+                    ? "Loading topics…"
+                    : topicsError
+                    ? "Failed to load topics"
+                    : "Select a topic"}
+                </option>
+
+                {kafkaTopics.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                readOnly={draft?.status !== "draft"}
+                type={def.type === "number" ? "number" : "text"}
+                className="w-full p-2 rounded text-black"
+                value={val}
+                onChange={(e) => updateSelectedNodeConfig(fullKey, e.target.value)}
+              />
+            )}
+
             {def.description && (
               <p className="text-xs text-gray-300 mt-1">{def.description}</p>
             )}
@@ -338,7 +388,14 @@ export default function PipelineDesign() {
         );
       });
     },
-    [selectedNode, updateSelectedNodeConfig]
+    [
+      selectedNode,
+      draft?.status,
+      topicsLoading,
+      topicsError,
+      kafkaTopics,
+      updateSelectedNodeConfig,
+    ]
   );
 
 
