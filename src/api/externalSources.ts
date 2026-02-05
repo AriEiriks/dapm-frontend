@@ -6,6 +6,7 @@ export interface ExternalSource {
   connectorClass: string;
   topics: string;
   state?: string;
+  usedByPipelines?: string[];
 }
 
 export interface CreateExternalSourceRequest {

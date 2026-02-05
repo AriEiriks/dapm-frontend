@@ -14,7 +14,7 @@ export default function PipelineNavbar() {
     const [pathname, setPathname] = useState(location.pathname);
     const pipelineName = pathname.split("/")[5];
     const auth = useAuth();
-    const { pipelines, validatePipeline, loading, buildPipeline, actionLoading, executePipeline, terminatePipeline } = usePipeline();
+    const { pipelines, validatePipeline, loading, buildPipeline, actionLoading, executePipeline, terminatePipeline, checkConfigStatus } = usePipeline();
     const [errorPopupOpen, setErrorPopupOpen] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [popupOpen, setPopupOpen] = useState(false);
@@ -81,10 +81,17 @@ export default function PipelineNavbar() {
                             <button
                                 className="bg-green-600 text-white px-4 py-2 rounded"
                                 onClick={async () => {
+                                    if (!draft) return;
+                                    const orgDomainName = localStorage.getItem("domain") || "8081";
 
-                                    // setErrorMessage();
-                                    setPopupOpen(true);
+                                    const result = await checkConfigStatus(orgDomainName, draft.name);
 
+                                    if (result?.missingPermissions?.length > 0) {
+                                        setPopupOpen(true); // show the popup with missing perms
+                                    } else {
+                                        // no popup needed; pipelineProvider already promoted it to "configured"
+                                        setPopupOpen(false);
+                                    }
                                 }}
                             >
                                 Check Missing Permissions

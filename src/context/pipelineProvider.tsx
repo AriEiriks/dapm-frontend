@@ -212,7 +212,6 @@ const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) => {
     setActionLoading((prev) => ({ ...prev, validate: true }));
     if (!pipeline.graph) throw new Error("Pipeline has no graph to validate");
 
-    // 🔥 Unflatten + normalize every node config before building DTO
   const normalizedNodes = pipeline.graph.nodes.map((n) => {
     const unflattened = unflattenConfig(n.data?.config || {});
     const fixed = normalizeConfig(unflattened);
@@ -426,12 +425,31 @@ const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) => {
     }
   };
 
+
+
   const checkConfigStatus = async (orgDomainName: string, pipelineName: string) => {
     setLoading(true);
     try {
       const res = await checkConfigurationStatusPipeline(orgDomainName, pipelineName);
+      const data = res.data;
       setLoading(false);
-      return res.data;
+      
+      // auto-promote locally when nothing is missing
+      if (
+        data?.status === "VALID" &&
+        Array.isArray(data?.missingPermissions) &&
+        data.missingPermissions.length === 0
+      ) {
+        setPipelines((prev) =>
+          prev.map((p) =>
+            p.name === pipelineName
+              ? { ...p, status: "configured", updatedAt: new Date().toISOString() }
+              : p
+          )
+        );
+      }
+
+      return data;
     } catch (err) {
       setLoading(false);
       throw err;
