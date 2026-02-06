@@ -100,12 +100,12 @@ export default function ExternalSources() {
       {!externalSourcesCtx.loadingExternalSources && externalSources.length > 0 && (
         <div className="px-3 mt-5">
           <div className="w-full text-sm text-[#757575] mb-2">
-            These external sources represent Kafka Connect source connectors currently configured for this
+            These Connectors represent Kafka Connect source/sink connectors currently configured for this
             organization instance.
           </div>
 
           <div className="w-full py-3 text-2xl text-[#ff5722] font-semibold">
-            Available External Sources
+            Available Connectors
           </div>
 
           <div className="flex flex-col gap-4">
@@ -306,7 +306,7 @@ export default function ExternalSources() {
       )}
 
       {!externalSourcesCtx.loadingExternalSources && externalSources.length === 0 && (
-        <div className="px-3 mt-5 text-sm text-[#757575]">No external sources found.</div>
+        <div className="px-3 mt-5 text-sm text-[#757575]">No connector found.</div>
       )}
 
       <Dialog open={openEditPopup} onClose={closeEditPopup} className="relative z-40">

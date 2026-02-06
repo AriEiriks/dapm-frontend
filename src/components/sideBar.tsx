@@ -78,7 +78,7 @@ export default function SideBar({ isOpen, size, setIsOpen }: { isOpen: boolean; 
             role: role.ADMIN,
         },
         {
-            label: "External Sources",
+            label: "Connectors",
             path: "/dashboard/external-sources",
             icon: <TerminalIcon className="text-[#2196f3]" />,
             role: role.ADMIN,

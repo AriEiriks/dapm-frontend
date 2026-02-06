@@ -231,7 +231,7 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
           setRawError(null);
           setRawDirty(false);
         } else {
-          alert("Create external source failed: " + result.message);
+          alert("Create connector failed: " + result.message);
         }
       } finally {
         externalSources.setLoadingExternalSources(false);

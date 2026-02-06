@@ -39,7 +39,7 @@ const ExternalSourcePopup: React.FC<ExternalSourcePopupProps> = ({
           />
 
           <DialogTitle className="font-bold text-white sm:text-3xl text-xl text-center">
-            Create External Source Connector
+            Create Connector
           </DialogTitle>
 
           <CreateExternalSourceForm setOpenExternalSourcePopup={setOpenExternalSourcePopup} />
