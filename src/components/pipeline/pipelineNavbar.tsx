@@ -18,6 +18,8 @@ export default function PipelineNavbar() {
     const [errorPopupOpen, setErrorPopupOpen] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [popupOpen, setPopupOpen] = useState(false);
+    const [checkingConfig, setCheckingConfig] = useState(false);
+    const [needsPermissions, setNeedsPermissions] = useState<boolean | null>(null);
     const [title, setTitle] = useState("");
     const proj = useProject();
 
@@ -29,6 +31,39 @@ export default function PipelineNavbar() {
         console.log(location.pathname);
         console.log(auth.token)
     }, [location.pathname]);
+
+    useEffect(() => {
+        if (!draft) return;
+
+        // Reset whenever we leave validated
+        if (draft.status !== "validated") {
+            setCheckingConfig(false);
+            setNeedsPermissions(null);
+            return;
+        }
+
+        // Avoid repeated calls
+        if (checkingConfig || needsPermissions !== null) return;
+
+        (async () => {
+            try {
+                setCheckingConfig(true);
+                const orgDomainName = localStorage.getItem("domain") || "8081";
+                const res = await checkConfigStatus(orgDomainName, draft.name);
+                const missing = (res?.missingPermissions?.length ?? 0) > 0;
+                setNeedsPermissions(missing);
+
+                // If missing perms exist, show the popup; otherwise the navbar will advance automatically to Build
+                if (missing) setPopupOpen(true);
+            } catch (e) {
+                // If the check fails, fall back to showing the button so the user can retry manually
+                setNeedsPermissions(true);
+            } finally {
+                setCheckingConfig(false);
+            }
+        })();
+    }, [draft?.status, draft?.name]);
+
     return (
         <div className="w-full h-[8%] bg-[#214162] flex items-center   justify-between px-4 border-b-2 border-[#ff5722]">
             <div onClick={() => { nav(-1) }} className=" text-white flex cursor-pointer hover:text-white rounded-2xl  items-center w-1/3">
@@ -41,6 +76,8 @@ export default function PipelineNavbar() {
                 {
                     draft && draft.status === "draft" && !actionLoading.validate ? (
 
+
+
                         <button
                             className="bg-green-600 text-white px-4 py-2 rounded"
                             disabled={
@@ -51,12 +88,16 @@ export default function PipelineNavbar() {
                             onClick={async () => {
                                 if (!draft) return;
 
-                                const orgDomainName = localStorage.getItem("domain") || "";
+                                const orgDomainName = localStorage.getItem("domain") || "8081";
                                 const result = await validatePipeline(orgDomainName, draft);
                                 console.log("✅ Validation result:", result);
                                 if (result.success) {
-                                    // setOpenAssignUserPopup(false);
-                                    // resetForm();
+                                    // CHECK CONFIGURATION IMMEDIATELY
+                                    const configResult = await checkConfigStatus(orgDomainName, draft.name);
+
+                                    if ((configResult?.missingPermissions?.length ?? 0) === 0) {
+                                        setPopupOpen(false);
+                                    }
                                 } else {
                                     setTitle("Validation Error");
                                     setErrorMessage(result.message || "Unknown error");
@@ -78,24 +119,34 @@ export default function PipelineNavbar() {
 
 
                         : draft ? draft.status === "validated" ? (
-                            <button
-                                className="bg-green-600 text-white px-4 py-2 rounded"
-                                onClick={async () => {
-                                    if (!draft) return;
-                                    const orgDomainName = localStorage.getItem("domain") || "8081";
+                            checkingConfig || needsPermissions === null ? (
+                                <button
+                                    className="bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed"
+                                    disabled
+                                >
+                                    Checking...
+                                </button>
+                            ) : needsPermissions ? (
+                                <button
+                                    className="bg-green-600 text-white px-4 py-2 rounded"
+                                    onClick={async () => {
+                                        if (!draft) return;
+                                        const orgDomainName = localStorage.getItem("domain") || "8081";
 
-                                    const result = await checkConfigStatus(orgDomainName, draft.name);
+                                        const result = await checkConfigStatus(orgDomainName, draft.name);
 
-                                    if (result?.missingPermissions?.length > 0) {
-                                        setPopupOpen(true); // show the popup with missing perms
-                                    } else {
-                                        // no popup needed; pipelineProvider already promoted it to "configured"
-                                        setPopupOpen(false);
-                                    }
-                                }}
-                            >
-                                Check Missing Permissions
-                            </button>
+                                        if (result?.missingPermissions?.length > 0) {
+                                            setPopupOpen(true); 
+                                        } else {
+                                            setPopupOpen(false);
+                                        }
+                                    }}
+                                >
+                                    Check Missing Permissions
+                                </button>
+                            ) : (
+                                null
+                            )
                         ) : draft.status === "configured" && !actionLoading.build ? (
                             <button
                                 hidden={
@@ -107,7 +158,8 @@ export default function PipelineNavbar() {
                                 onClick={async () => {
                                     if (!draft) return;
 
-                                    const orgDomainName = localStorage.getItem("domain") || "";
+                                    const orgDomainName = localStorage.getItem("domain") || "8081";
+
                                     const result = await buildPipeline(orgDomainName, draft);
                                     console.log("✅ Build result:", result);
                                     if (result.success) {
@@ -122,6 +174,8 @@ export default function PipelineNavbar() {
                             >
                                 Build
                             </button>
+
+
                         ) : draft.status === "configured" && actionLoading.build ? (
                             <button
                                 className="bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed"

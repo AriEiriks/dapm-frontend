@@ -4,6 +4,8 @@ import * as Yup from "yup";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 
 import { useExternalSources } from "../../context/externalSourcesProvider";
+import { useSchemaRegistry } from "../../context/schemaRegistryProvider";
+
 import {
   CreateExternalSourceRequest,
   ConnectorPlugin,
@@ -31,11 +33,12 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
   initialConfig,
 }) => {
   const externalSources = useExternalSources();
+  const schemaRegistry = useSchemaRegistry();
 
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
 
-  const [viewMode, setViewMode] = useState<"form" | "raw">("form");
+  const [viewMode, setViewMode] = useState<"form" | "raw" | "schema">("form");
 
   const [configDefs, setConfigDefs] = useState<ConnectorConfigDef[]>([]);
   const [configDefsLoading, setConfigDefsLoading] = useState(false);
@@ -48,6 +51,29 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
 
   const [rawDirty, setRawDirty] = useState(false);
   const lastRawSyncedRef = useRef<string>("");
+
+    const [schemaSubjects, setSchemaSubjects] = useState<string[]>([]);
+    const [schemaSubjectsLoading, setSchemaSubjectsLoading] = useState(false);
+
+    const [schemaSubjectInput, setSchemaSubjectInput] = useState(""); // subject to create
+    const [schemaBody, setSchemaBody] = useState("");               // JSON schema text
+    const [schemaSendLoading, setSchemaSendLoading] = useState(false);
+    const [schemaSendError, setSchemaSendError] = useState<string | null>(null);
+
+    const refreshSchemaSubjects = async () => {
+      setSchemaSubjectsLoading(true);
+      try {
+        const subjects = await schemaRegistry.refreshSubjects();
+        setSchemaSubjects(subjects || []);
+      } finally {
+        setSchemaSubjectsLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      refreshSchemaSubjects();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
   const shortName = (clazz: string) => clazz.split(".").pop() || clazz;
 
@@ -151,7 +177,7 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
           if (initialConnectorClass) {
             fullConfig["connector.class"] = initialConnectorClass;
           }
-          delete fullConfig["name"]; // never submit name as a config key
+          delete fullConfig["name"];
 
           const res = await externalSources.updateExternalSourceConfig(
             editingConnectorName,
@@ -174,7 +200,7 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
         if (values.connectorClass) {
           fullConfigToSubmit["connector.class"] = values.connectorClass;
         }
-        delete fullConfigToSubmit["name"]; // never submit "name" as a config key
+        delete fullConfigToSubmit["name"];
 
 
         const missing = requiredDefs
@@ -417,9 +443,126 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
         >
           Raw
         </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("schema");
+            setSchemaSendError(null);
+          }}
+          className={[
+            "px-4 py-2 rounded-md border-2 border-white",
+            viewMode === "schema" ? "bg-[#15283c] text-white" : "bg-transparent text-[#ffffff4d]",
+          ].join(" ")}
+        >
+          Schema
+        </button>
+
       </div>
 
-      {viewMode === "raw" ? (
+      
+
+      {viewMode === "schema" ? (
+        <div className="w-full flex flex-col mb-4">
+          <h4 className="text-sm font-bold text-[#ffffff4d] mb-2">Upload JSON Schema</h4>
+
+          <div className="w-full flex flex-col mb-3">
+            <span className="text-xs text-[#ffffff4d] font-bold">Subject</span>
+            <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
+              <TextFieldsIcon className="text-white" />
+              <input
+                type="text"
+                className="bg-transparent text-white w-full ml-2 outline-none"
+                placeholder='e.g. "my-topic-value"'
+                value={schemaSubjectInput}
+                onChange={(e) => setSchemaSubjectInput(e.target.value)}
+              />
+            </div>
+            <div className="text-[11px] text-[#ffffff4d] mt-1">
+              Subject is the Schema Registry identifier (does not require the Kafka topic to exist yet).
+            </div>
+          </div>
+
+          <div className="w-full flex flex-col mb-3">
+            <span className="text-xs text-[#ffffff4d] font-bold">JSON Schema</span>
+            <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-start rounded-md">
+              <TextFieldsIcon className="text-white mt-1" />
+              <textarea
+                rows={12}
+                className="bg-transparent text-white w-full ml-2 outline-none resize-y"
+                value={schemaBody}
+                onChange={(e) => setSchemaBody(e.target.value)}
+                placeholder={`{
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "timestamp": { "type": "string", "format": "date-time" },
+                    "source": { "type": "string" }
+                  },
+                  "required": ["timestamp", "source"]
+                }`}
+              />
+            </div>
+          </div>
+
+          {schemaSendError && (
+            <div className="text-red-500 text-xs mb-2">{schemaSendError}</div>
+          )}
+
+          <div className="w-full flex gap-2">
+            <button
+              type="button"
+              className="text-white sm:w-fit w-full sm:px-6 p-2 px-6 bg-[#15283c] hover:bg-[#ff5722] border-2 border-white rounded-md disabled:opacity-50"
+              disabled={schemaSendLoading}
+              onClick={async () => {
+                setSchemaSendError(null);
+
+                const subject = schemaSubjectInput.trim();
+                const schemaText = schemaBody.trim();
+
+                if (!subject) {
+                  setSchemaSendError("Subject is required.");
+                  return;
+                }
+                if (!schemaText) {
+                  setSchemaSendError("Schema text is required.");
+                  return;
+                }
+
+                setSchemaSendLoading(true);
+                try {
+                  const res = await schemaRegistry.uploadSchema(subject, schemaText);
+
+                  if (!res.success) {
+                    setSchemaSendError(res.message || "Schema upload failed.");
+                    return;
+                  }
+
+                  setSchemaBody("");
+                  setSchemaSubjectInput("");
+
+                  await refreshSchemaSubjects();
+                } finally {
+                  setSchemaSendLoading(false);
+                }
+              }}
+            >
+              Send schema
+            </button>
+
+            <button
+              type="button"
+              className="text-white sm:w-fit w-full sm:px-6 p-2 px-6 bg-transparent border-2 border-white rounded-md disabled:opacity-50"
+              disabled={schemaSubjectsLoading}
+              onClick={refreshSchemaSubjects}
+              title="Refresh subjects"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      
+        ) : viewMode === "raw" ? (
         <div className="w-full flex flex-col mb-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-[#ffffff4d]">
@@ -464,8 +607,42 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
             </div>
           )}
         </div>
-      ) : (
+        ) : (
         <>
+
+          <div className="w-full flex flex-col mb-4">
+            <h4 className="text-sm font-bold text-[#ffffff4d]">Schema (optional)</h4>
+
+            <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
+              <TextFieldsIcon className="text-white" />
+              <select
+                className={[
+                  "bg-transparent w-full ml-2 outline-none",
+                  (formik.values.config["dapm.schema.subject"] || "").trim()
+                    ? "text-white"
+                    : "text-[#ffffff4d]",
+                ].join(" ")}
+                value={formik.values.config["dapm.schema.subject"] ?? ""}
+                onChange={(e) => {
+                  setConfigValue("dapm.schema.subject", e.target.value);
+                }}
+              >
+                <option value="" className="text-black bg-white">
+                  {schemaSubjectsLoading ? "Loading schemas…" : "No schema (schemaless)"}
+                </option>
+                {schemaSubjects.map((s) => (
+                  <option key={s} value={s} className="text-black bg-white">
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="text-[11px] text-[#ffffff4d] mt-1">
+              This stores the chosen Schema Registry subject in the connector config as <b>dapm.schema.subject</b>.
+            </div>
+          </div>
+
           {/* Connector Type */}
           <div className="w-full flex flex-col mb-4">
             <h4 className="text-sm font-bold text-[#ffffff4d]">Connector Type</h4>

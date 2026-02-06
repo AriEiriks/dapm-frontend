@@ -12,6 +12,7 @@ import AccessRequestProvider from "./context/accessRequestsProvider";
 import ProjectProvider from "./context/projectProvider";
 import PipelineProvider from "./context/pipelineProvider";
 import { KafkaProvider } from "./context/KafkaProvider";
+import { SchemaRegistryProvider } from "./context/schemaRegistryProvider";
 // import { getRuntimeConfig } from "./runtimeConfig";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <OrgProvider>
             <PeProvider>
              <ExternalSourcesProvider>
+              <SchemaRegistryProvider>
               <KafkaProvider>
               <AccessRequestProvider>
                 <ProjectProvider>
@@ -38,6 +40,7 @@ export default function App() {
                 </ProjectProvider>
               </AccessRequestProvider>
               </KafkaProvider>
+              </SchemaRegistryProvider>
              </ExternalSourcesProvider>
             </PeProvider>
           </OrgProvider>
