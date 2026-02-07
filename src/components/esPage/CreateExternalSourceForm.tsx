@@ -26,6 +26,12 @@ type FormValues = {
   config: Record<string, string>;
 };
 
+type DataFileInfo = {
+  name: string;
+  size: number;
+  connectPath: string;
+};
+
 const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
   setOpenExternalSourcePopup,
   mode = "create",
@@ -34,6 +40,20 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
 }) => {
   const externalSources = useExternalSources();
   const schemaRegistry = useSchemaRegistry();
+
+  const FILE_SOURCE_CONNECTOR_CLASS =
+    "org.apache.kafka.connect.file.FileStreamSourceConnector";
+
+  const isFileSourceConnector = (clazz: string) =>
+    clazz === FILE_SOURCE_CONNECTOR_CLASS;
+
+  const [availableFiles, setAvailableFiles] = useState<DataFileInfo[]>([]);
+
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesError, setFilesError] = useState<string | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
@@ -52,28 +72,66 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
   const [rawDirty, setRawDirty] = useState(false);
   const lastRawSyncedRef = useRef<string>("");
 
-    const [schemaSubjects, setSchemaSubjects] = useState<string[]>([]);
-    const [schemaSubjectsLoading, setSchemaSubjectsLoading] = useState(false);
+  const [schemaSubjects, setSchemaSubjects] = useState<string[]>([]);
+  const [schemaSubjectsLoading, setSchemaSubjectsLoading] = useState(false);
 
-    const [schemaSubjectInput, setSchemaSubjectInput] = useState(""); // subject to create
-    const [schemaBody, setSchemaBody] = useState("");               // JSON schema text
-    const [schemaSendLoading, setSchemaSendLoading] = useState(false);
-    const [schemaSendError, setSchemaSendError] = useState<string | null>(null);
+  const [schemaSubjectInput, setSchemaSubjectInput] = useState(""); 
+  const [schemaBody, setSchemaBody] = useState("");              
+  const [schemaSendLoading, setSchemaSendLoading] = useState(false);
+  const [schemaSendError, setSchemaSendError] = useState<string | null>(null);
 
-    const refreshSchemaSubjects = async () => {
-      setSchemaSubjectsLoading(true);
-      try {
-        const subjects = await schemaRegistry.refreshSubjects();
-        setSchemaSubjects(subjects || []);
-      } finally {
-        setSchemaSubjectsLoading(false);
-      }
-    };
+  const refreshSchemaSubjects = async () => {
+    setSchemaSubjectsLoading(true);
+    try {
+      const subjects = await schemaRegistry.refreshSubjects();
+      setSchemaSubjects(subjects || []);
+    } finally {
+      setSchemaSubjectsLoading(false);
+    }
+  };
 
-    useEffect(() => {
-      refreshSchemaSubjects();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  useEffect(() => {
+    refreshSchemaSubjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const refreshAvailableFiles = async () => {
+    setFilesLoading(true);
+    setFilesError(null);
+    try {
+      // CHANGED: backend returns DataFileInfo[]
+      const files = await externalSources.listFiles();
+      setAvailableFiles(files || []);
+    } catch (e: any) {
+      setAvailableFiles([]);
+      setFilesError(e?.message || "Failed to load files.");
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+const handleUploadFile = async (file: File) => {
+  setUploadLoading(true);
+  setUploadError(null);
+  try {
+    const res = await externalSources.uploadFile(file);
+    if (!res.success) {
+      setUploadError(res.message || "Upload failed.");
+      return;
+    }
+
+    const files = await externalSources.listFiles();
+    setAvailableFiles(files || []);
+
+    const uploaded = (files || []).find((x) => x.name === file.name);
+
+    setConfigValue("file", uploaded?.connectPath ?? `/data/${file.name}`);
+  } catch (e: any) {
+    setUploadError(e?.message || "Upload failed.");
+  } finally {
+    setUploadLoading(false);
+  }
+};
 
   const shortName = (clazz: string) => clazz.split(".").pop() || clazz;
 
@@ -152,7 +210,10 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
     },
     enableReinitialize: true,
 
-    validationSchema: Yup.object({
+    validationSchema: (values?: FormValues) => {
+    const v = values ?? formik.initialValues;
+
+    return Yup.object({
       name:
         mode === "create"
           ? Yup.string().required("Connector name is required")
@@ -161,7 +222,15 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
         mode === "create"
           ? Yup.string().required("Connector type is required")
           : Yup.string(),
-    }),
+      config: Yup.object({
+        file: isFileSourceConnector(v?.connectorClass || "")
+          ? Yup.string().required("File is required")
+          : Yup.string().notRequired(),
+      }),
+    });
+  },
+
+
 
     onSubmit: async (values, { resetForm }) => {
       externalSources.setLoadingExternalSources(true);
@@ -203,13 +272,15 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
         delete fullConfigToSubmit["name"];
 
 
-        const missing = requiredDefs
-          .map((d) => d.name)
-          .filter((k) => k !== "name" && k !== "connector.class")
-          .filter((k) => {
-            const v = fullConfigToSubmit[k];
-            return !v || String(v).trim() === "";
-          });
+        const missing = [
+          ...(isFileSourceConnector(values.connectorClass) ? ["file"] : []), 
+          ...requiredDefs
+            .map((d) => d.name)
+            .filter((k) => k !== "name" && k !== "connector.class"),
+        ].filter((k) => {
+          const v = fullConfigToSubmit[k];
+          return !v || String(v).trim() === "";
+        });
 
         if (missing.length > 0) {
           alert("Please fill required fields:\n" + missing.join("\n"));
@@ -244,6 +315,14 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
     nextConfig[key] = value;
     formik.setFieldValue("config", nextConfig, false);
   };
+
+  useEffect(() => {
+    if (isFileSourceConnector(formik.values.connectorClass)) {
+      refreshAvailableFiles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.connectorClass]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -295,7 +374,11 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
 
    const optionalDefs = useMemo(() => {
     return (configDefs || []).filter(
-      (d) => d.required !== true && d.name !== "connector.class" && d.name !== "name"
+      (d) =>
+        d.required !== true &&
+        d.name !== "connector.class" &&
+        d.name !== "name" &&
+        d.name !== "file"
     );
   }, [configDefs]);
 
@@ -741,6 +824,81 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
               </div>
             )}
           </div>
+
+          
+          {/* File (ONLY for FileSource connector type) */}
+          {isFileSourceConnector(formik.values.connectorClass) && (
+            <div className="w-full flex flex-col mb-4">
+              <h4 className="text-sm font-bold text-[#ffffff4d]">File</h4>
+
+              <div className="w-full flex items-center gap-2">
+                <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
+                  <TextFieldsIcon className="text-white" />
+                  <select
+                    className={[
+                      "bg-transparent w-full ml-2 outline-none",
+                      (formik.values.config["file"] || "").trim()
+                        ? "text-white"
+                        : "text-[#ffffff4d]",
+                    ].join(" ")}
+                    value={formik.values.config["file"] ?? ""}
+                    onChange={(e) => setConfigValue("file", e.target.value)}
+                    onBlur={() => formik.setFieldTouched("config.file", true, false)}
+                    disabled={filesLoading}
+                  >
+                    <option value="" className="text-black bg-white">
+                      {filesLoading ? "Loading files…" : "Select a file…"}
+                    </option>
+                    {availableFiles.map((f) => (
+                      <option key={f.connectPath} value={f.connectPath} className="text-black bg-white">
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.currentTarget.files?.[0];
+                    if (!file) return;
+                    await handleUploadFile(file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+
+                <button
+                  type="button"
+                  className="text-white sm:w-fit w-fit px-4 py-2 bg-[#15283c] hover:bg-[#ff5722] border-2 border-white rounded-md disabled:opacity-50"
+                  disabled={uploadLoading}
+                  onClick={() => uploadInputRef.current?.click()}
+                  title="Upload a new file to /data"
+                >
+                  {uploadLoading ? "Uploading…" : "Upload"}
+                </button>
+
+                <button
+                  type="button"
+                  className="text-white sm:w-fit w-fit px-4 py-2 bg-transparent border-2 border-white rounded-md disabled:opacity-50"
+                  disabled={filesLoading}
+                  onClick={refreshAvailableFiles}
+                  title="Refresh files"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {formik.touched.config?.file && (formik.errors as any)?.config?.file && (
+                <div className="text-red-500 text-xs mt-1">
+                  {(formik.errors as any)?.config?.file}
+                </div>
+              )}
+              {filesError && <div className="text-red-500 text-xs mt-1">{filesError}</div>}
+              {uploadError && <div className="text-red-500 text-xs mt-1">{uploadError}</div>}
+            </div>
+          )}
 
           {/* Required configuration fields */}
           <div className="w-full flex flex-col mb-4">

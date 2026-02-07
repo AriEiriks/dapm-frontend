@@ -40,6 +40,25 @@ export interface ConnectorConfigDef {
 
 export type ConnectorConfig = Record<string, string>;
 
+export type DataFileInfo = { name: string; size: number; connectPath: string };
+
+export const listFilesInDataDir = () =>
+  axiosInstance.get<DataFileInfo[]>("/api/files", {
+    baseURL: "http://localhost:8081",
+  });
+
+export const uploadFileToDataDir = (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return axiosInstance.post<{ message?: string }>("/api/files/upload", formData, {
+    baseURL: "http://localhost:8081",
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};
+
 export const getAllExternalSources = (orgDomainName: string) =>
   axiosInstance.get<ExternalSource[]>(
     "/api/external-sources",

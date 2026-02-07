@@ -22,6 +22,9 @@ import {
   getExternalSourceConnectorStatus,
   pauseExternalSourceConnector,
   resumeExternalSourceConnector,
+  DataFileInfo,
+  listFilesInDataDir,
+  uploadFileToDataDir,
 } from "../api/externalSources";
 
 interface ExternalSourcesContextType {
@@ -29,6 +32,8 @@ interface ExternalSourcesContextType {
   getSources: (domainName?: string) => Promise<string | void>;
   loadingExternalSources: boolean;
   setLoadingExternalSources: (loading: boolean) => void;
+  listFiles: () => Promise<DataFileInfo[]>;
+  uploadFile: (file: File) => Promise<{ success: boolean; message: string }>;
   addExternalSource: (
     req: CreateExternalSourceRequest
   ) => Promise<{ success: boolean; message: string }>;
@@ -104,6 +109,36 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
       success: false,
       message: "Create external source failed due to unknown error",
     };
+  }
+}
+
+async function listFiles(): Promise<DataFileInfo[]> {
+  try {
+    const res = await listFilesInDataDir();
+    return res.data || [];
+  } catch {
+    return [];
+  }
+}
+
+async function uploadFile(
+  file: File
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await uploadFileToDataDir(file);
+    return { success: true, message: (res.data as any)?.message || "File uploaded" };
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      return {
+        success: false,
+        message:
+          (err.response?.data as any)?.message ||
+          (err.response?.data as any)?.error ||
+          err.message ||
+          "Upload failed",
+      };
+    }
+    return { success: false, message: "Upload failed due to unknown error" };
   }
 }
 
@@ -228,6 +263,8 @@ async function deleteExternalSourceByName(
         getExternalSourceStatus,
         pauseExternalSource,
         resumeExternalSource,
+        listFiles,
+        uploadFile,
       }}
     >
       {children}
