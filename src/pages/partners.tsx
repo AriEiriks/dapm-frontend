@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../auth/authProvider";
 import { useOrg } from "../context/orgsProvider";
 import orgprofile1 from "../imgs/org-profiles/organization-1.png"
-import orgprofile2 from "../imgs/org-profiles/organization-2.png"
 import orgprofile3 from "../imgs/org-profiles/organization-3.png"
 import orgprofile4 from "../imgs/org-profiles/organization-4.png"
 import orgprofile5 from "../imgs/org-profiles/organization-5.png"
@@ -21,7 +20,7 @@ export default function Partners() {
     }, [orgData.loadingHandshake, orgData.loadingUpgrade]);
 
     function randomeProfile() {
-        const profiles = [orgprofile1, orgprofile2, orgprofile3, orgprofile4, orgprofile5];
+        const profiles = [orgprofile1, orgprofile3, orgprofile4, orgprofile5];
         const randomIndex = Math.floor(Math.random() * profiles.length);
         return profiles[randomIndex];
     }

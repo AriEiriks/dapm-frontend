@@ -3,7 +3,6 @@ import { use, useEffect, useState } from "react";
 import AddPeButton from "../components/pePage/addPeButton";
 import { usePE } from "../context/processingElementsProvider";
 import orgprofile1 from "../imgs/org-profiles/organization-1.png"
-import orgprofile2 from "../imgs/org-profiles/organization-2.png"
 import orgprofile3 from "../imgs/org-profiles/organization-3.png"
 import orgprofile4 from "../imgs/org-profiles/organization-4.png"
 import orgprofile5 from "../imgs/org-profiles/organization-5.png"

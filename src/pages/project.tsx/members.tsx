@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/authProvider";
 import { useProject } from "../../context/projectProvider";
 import userprofile1 from "../../imgs/user-profile1.png"
-import userprofile2 from "../../imgs/user-profile2.png"
 import userprofile3 from "../../imgs/user-profile3.png"
 import userprofile4 from "../../imgs/user-profile4.png"
 import userprofile5 from "../../imgs/user-profile5.png"
@@ -27,7 +26,7 @@ export default function Members() {
     }, [auth.userData, projectName, proj.loadingCreateProject]);
 
     function randomeProfile() {
-        const profiles = [userprofile1, userprofile2, userprofile3, userprofile4, userprofile5, userprofile6];
+        const profiles = [userprofile1, userprofile3, userprofile4, userprofile5, userprofile6];
         const randomIndex = Math.floor(Math.random() * profiles.length);
         return profiles[randomIndex];
     }
