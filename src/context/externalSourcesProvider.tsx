@@ -114,7 +114,8 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
 
 async function listFiles(): Promise<DataFileInfo[]> {
   try {
-    const res = await listFilesInDataDir();
+    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const res = await listFilesInDataDir(safeOrgDomainName);
     return res.data || [];
   } catch {
     return [];
@@ -125,8 +126,12 @@ async function uploadFile(
   file: File
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const res = await uploadFileToDataDir(file);
-    return { success: true, message: (res.data as any)?.message || "File uploaded" };
+    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const res = await uploadFileToDataDir(safeOrgDomainName, file);
+    return {
+      success: true,
+      message: (res.data as any)?.message || "File uploaded",
+    };
   } catch (err) {
     if (axios.isAxiosError(err)) {
       return {

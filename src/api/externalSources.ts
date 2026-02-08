@@ -42,17 +42,17 @@ export type ConnectorConfig = Record<string, string>;
 
 export type DataFileInfo = { name: string; size: number; connectPath: string };
 
-export const listFilesInDataDir = () =>
+export const listFilesInDataDir = (orgDomainName: string) =>
   axiosInstance.get<DataFileInfo[]>("/api/files", {
-    baseURL: "http://localhost:8081",
+    baseURL: `http://localhost:${orgDomainName}`,
   });
 
-export const uploadFileToDataDir = (file: File) => {
+export const uploadFileToDataDir = (orgDomainName: string, file: File) => {
   const formData = new FormData();
   formData.append("file", file);
 
   return axiosInstance.post<{ message?: string }>("/api/files/upload", formData, {
-    baseURL: "http://localhost:8081",
+    baseURL: `http://localhost:${orgDomainName}`,
     headers: {
       "Content-Type": "multipart/form-data",
     },

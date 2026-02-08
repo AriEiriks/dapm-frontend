@@ -900,10 +900,13 @@ const handleUploadFile = async (file: File) => {
                   type="file"
                   className="hidden"
                   onChange={async (e) => {
-                    const file = e.currentTarget.files?.[0];
+                    const input = e.currentTarget;            
+                    const file = input.files?.[0];
                     if (!file) return;
+
                     await handleUploadFile(file);
-                    e.currentTarget.value = "";
+
+                    input.value = "";                       
                   }}
                 />
 
