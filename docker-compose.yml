@@ -1,43 +1,9 @@
 version: "3.8"
 
 services:
-  react_orga:
-    build:
-      context: .            # this React project
-    container_name: react_orga
-    environment:
-      ORG_NAME: "OrgA"
-      API_BASE_URL: "http://orga:8080"   # backend service hostname on that network
+  frontend:
+    container_name: dapm_frontend
+    build: .
     ports:
-      - "3001:80"
-    networks:
-      - dapm_network
-
-  react_orgb:
-    build:
-      context: .
-    container_name: react_orgb
-    environment:
-      ORG_NAME: "OrgB"
-      API_BASE_URL: "http://orgb:8080"
-    ports:
-      - "3002:80"
-    networks:
-      - dapm_network
-
-  react_orgc:
-    build:
-      context: .
-    container_name: react_orgc
-    environment:
-      ORG_NAME: "OrgC"
-      API_BASE_URL: "http://orgc:8080"
-    ports:
-      - "3003:80"
-    networks:
-      - dapm_network
-
-networks:
-  dapm_network:
-    external: true
-    name: dapm-integration-platform_dapm_network 
+      - "3000:80"
+    restart: always
