@@ -236,8 +236,6 @@ const handleUploadFile = async (file: File) => {
 
 
     onSubmit: async (values, { resetForm }) => {
-      externalSources.setLoadingExternalSources(true);
-
       try {
         if (mode === "edit") {
           if (!editingConnectorName) {

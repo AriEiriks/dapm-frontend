@@ -44,7 +44,7 @@ export type DataFileInfo = { name: string; size: number; connectPath: string };
 
 export const listFilesInDataDir = (orgDomainName: string) =>
   axiosInstance.get<DataFileInfo[]>("/api/files", {
-    baseURL: `http://localhost:${orgDomainName}`,
+    baseURL: `http://${orgDomainName}`,
   });
 
 export const uploadFileToDataDir = (orgDomainName: string, file: File) => {
@@ -52,7 +52,7 @@ export const uploadFileToDataDir = (orgDomainName: string, file: File) => {
   formData.append("file", file);
 
   return axiosInstance.post<{ message?: string }>("/api/files/upload", formData, {
-    baseURL: `http://localhost:${orgDomainName}`,
+    baseURL: `http://${orgDomainName}`,
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -62,7 +62,7 @@ export const uploadFileToDataDir = (orgDomainName: string, file: File) => {
 export const getAllExternalSources = (orgDomainName: string) =>
   axiosInstance.get<ExternalSource[]>(
     "/api/external-sources",
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const createExternalSource = (
@@ -73,14 +73,14 @@ export const createExternalSource = (
     "/api/external-sources",
     payload,
     {
-      baseURL: `http://localhost:${orgDomainName}`,
+      baseURL: `http://${orgDomainName}`,
     }
   );
 
 export const deleteExternalSource = (orgDomainName: string, connectorName: string) =>
   axiosInstance.delete<{ message?: string }>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const getExternalSourceConnectorStatus = (
@@ -89,27 +89,27 @@ export const getExternalSourceConnectorStatus = (
 ) =>
   axiosInstance.get<ConnectorStatusResponse>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/status`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const pauseExternalSourceConnector = (orgDomainName: string, connectorName: string) =>
   axiosInstance.put<void>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/pause`,
     null,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const resumeExternalSourceConnector = (orgDomainName: string, connectorName: string) =>
   axiosInstance.put<void>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/resume`,
     null,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const getConnectorPlugins = (orgDomainName: string) =>
   axiosInstance.get<ConnectorPlugin[]>(
     "/api/external-sources/plugins",
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const getConnectorPluginConfigDefs = (
@@ -118,7 +118,7 @@ export const getConnectorPluginConfigDefs = (
 ) =>
   axiosInstance.get<ConnectorConfigDef[]>(
     `/api/external-sources/plugins/${encodeURIComponent(connectorClass)}/config-defs`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const getExternalSourceConnectorConfig = (
@@ -127,7 +127,7 @@ export const getExternalSourceConnectorConfig = (
 ) =>
   axiosInstance.get<ConnectorConfig>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/config`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const updateExternalSourceConnectorConfig = (
@@ -138,5 +138,5 @@ export const updateExternalSourceConnectorConfig = (
   axiosInstance.put<ConnectorConfig>(
     `/api/external-sources/connectors/${encodeURIComponent(connectorName)}/config`,
     config,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );  

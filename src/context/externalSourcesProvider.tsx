@@ -27,11 +27,29 @@ import {
   uploadFileToDataDir,
 } from "../api/externalSources";
 
+function getOrgDomain(): string {
+  return localStorage.getItem("domain") || "";
+}
+
+function toAxiosMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    return (
+      (err.response?.data as any)?.message ||
+      (err.response?.data as any)?.error ||
+      (err.response?.data as string) ||
+      err.message ||
+      fallback
+    );
+  }
+  return fallback;
+}
+
 interface ExternalSourcesContextType {
   externalSources: ExternalSource[] | null;
   getSources: (domainName?: string) => Promise<string | void>;
   loadingExternalSources: boolean;
   setLoadingExternalSources: (loading: boolean) => void;
+  lastError: string | null;
   listFiles: () => Promise<DataFileInfo[]>;
   uploadFile: (file: File) => Promise<{ success: boolean; message: string }>;
   addExternalSource: (
@@ -63,25 +81,32 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
   const [loadingExternalSources, setLoadingExternalSources] = useState(false);
   const [deletingExternalSource, setDeletingExternalSource] = useState(false);
 
+   const [lastError, setLastError] = useState<string | null>(null);
+
   async function getSources(domainName?: string) {
     try {
       setLoadingExternalSources(true);
 
-      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      setLastError(null);
+
+      const safeOrgDomainName = (domainName ?? getOrgDomain()).trim();
+      if (!safeOrgDomainName) {
+        setExternalSources([]);
+        const msg = "Missing org domain (localStorage 'domain' is empty).";
+        setLastError(msg);
+        return msg;
+      }
       const response = await getAllExternalSources(safeOrgDomainName);
 
       if (response.data) {
         setExternalSources(response.data);
       }
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        return (
-          (err.response?.data as string) ||
-          err.message ||
-          "Get External Sources failed"
-        );
-      }
-      return "Get External Sources failed";
+    
+      const msg = toAxiosMessage(err, "Get External Sources failed");
+      setLastError(msg);
+      return msg;
+
     } finally {
       setLoadingExternalSources(false);
     }
@@ -91,11 +116,13 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
     req: CreateExternalSourceRequest
   ): Promise<{ success: boolean; message: string }> {
   try {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const safeOrgDomainName = getOrgDomain().trim();
     const response = await createExternalSource(safeOrgDomainName, req);
     await getSources();
     return { success: true, message: response.data.message };
   } catch (err) {
+    const msg = toAxiosMessage(err, "Create external source failed");
+    setLastError(msg);
     if (axios.isAxiosError(err)) {
       return {
         success: false,
@@ -114,11 +141,15 @@ const ExternalSourcesProvider: React.FC<ExternalSourcesProviderProps> = ({ child
 
 async function listFiles(): Promise<DataFileInfo[]> {
   try {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    setLastError(null);
+    const safeOrgDomainName = getOrgDomain().trim();
+
     const res = await listFilesInDataDir(safeOrgDomainName);
     return res.data || [];
-  } catch {
-    return [];
+  } catch (err) {
+    const msg = toAxiosMessage(err, "Failed to list files");
+    setLastError(msg);
+    throw new Error(msg);
   }
 }
 
@@ -126,7 +157,7 @@ async function uploadFile(
   file: File
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const safeOrgDomainName = getOrgDomain().trim();
     const res = await uploadFileToDataDir(safeOrgDomainName, file);
     return {
       success: true,
@@ -153,7 +184,7 @@ async function deleteExternalSourceByName(
     try {
       setDeletingExternalSource(true);
 
-      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      const safeOrgDomainName = getOrgDomain().trim();
       await deleteExternalSource(safeOrgDomainName, name);
 
       await getSources();
@@ -181,30 +212,38 @@ async function deleteExternalSourceByName(
 
   async function fetchConnectorPlugins(): Promise<ConnectorPlugin[]> {
     try {
-      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      setLastError(null);
+      const safeOrgDomainName = getOrgDomain().trim();
+
       const response = await getConnectorPlugins(safeOrgDomainName);
 
       return (response.data || []).filter(
         (p) => !p?.clazz?.startsWith("org.apache.kafka.connect.mirror.")
       );
     } catch (err) {
-      return [];
+      const msg = toAxiosMessage(err, "Failed to load connector plugins");
+      setLastError(msg);
+      throw new Error(msg);
     }
   }
 
   
   async function fetchConnectorPluginConfigDefs(connectorClass: string): Promise<ConnectorConfigDef[]> {
     try {
-      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      setLastError(null);
+      const safeOrgDomainName = getOrgDomain().trim();
+
       const response = await getConnectorPluginConfigDefs(safeOrgDomainName, connectorClass);
       return response.data || [];
     } catch (err) {
-      return [];
+      const msg = toAxiosMessage(err, "Failed to load config definitions");
+      setLastError(msg);
+      throw new Error(msg);
     }
   }
 
   async function getExternalSourceConfig(connectorName: string): Promise<ConnectorConfig> {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const safeOrgDomainName = getOrgDomain().trim();
     const response = await getExternalSourceConnectorConfig(safeOrgDomainName, connectorName);
     return response.data || {};
   }
@@ -214,7 +253,7 @@ async function deleteExternalSourceByName(
     config: ConnectorConfig
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const safeOrgDomainName = localStorage.getItem("domain") || "";
+      const safeOrgDomainName = getOrgDomain().trim();
       await updateExternalSourceConnectorConfig(safeOrgDomainName, connectorName, config);
 
       await getSources();
@@ -236,18 +275,18 @@ async function deleteExternalSourceByName(
   }
 
   async function getExternalSourceStatus(connectorName: string) {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const safeOrgDomainName = getOrgDomain().trim();
     const res = await getExternalSourceConnectorStatus(safeOrgDomainName, connectorName);
     return res.data; // { name, state }
   }
 
   async function pauseExternalSource(connectorName: string) {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const safeOrgDomainName = getOrgDomain().trim();
     await pauseExternalSourceConnector(safeOrgDomainName, connectorName);
   }
 
   async function resumeExternalSource(connectorName: string) {
-    const safeOrgDomainName = localStorage.getItem("domain") || "";
+    const safeOrgDomainName = getOrgDomain().trim();
     await resumeExternalSourceConnector(safeOrgDomainName, connectorName);
   }
 
@@ -258,6 +297,7 @@ async function deleteExternalSourceByName(
         getSources,
         loadingExternalSources,
         setLoadingExternalSources,
+        lastError,
         addExternalSource,
         deleteExternalSourceByName,
         deletingExternalSource,
