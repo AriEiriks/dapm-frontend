@@ -18,7 +18,7 @@ export interface AuthResponse {
 
 export const login = (data: LoginRequest, orgDomainName: string ) =>
   axiosInstance.post<AuthResponse>(`/api/auth/authenticate`, data,
-    { baseURL: `http://localhost:${orgDomainName}` } );
+    { baseURL: `http://${orgDomainName}` } );
 
 export const signup = (data: SignupRequest) =>
   axiosInstance.post<AuthResponse>("/auth/register", data);

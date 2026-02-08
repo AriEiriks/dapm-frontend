@@ -27,11 +27,11 @@ export interface UploadProcessingElementRequest {
     // create a get all users function
 export const getAllProcessingElements = (orgDomainName: string) => 
     axiosInstance.get<ProcessingElement[]>(`/api/processingElements`,
-    { baseURL: `http://localhost:${orgDomainName}` } );
+    { baseURL: `http://${orgDomainName}` } );
 
 // export const getAllSubscribers = (orgDomainName: string) => 
 //     axiosInstance.get<Org[]>(`/api/partner-organizations/subscribers`,
-//     { baseURL: `http://localhost:${orgDomainName}` } );
+//     { baseURL: `http://${orgDomainName}` } );
 
 function buildPEFormData(data: UploadProcessingElementRequest): FormData {
   const formData = new FormData();
@@ -69,7 +69,7 @@ export const createProcessingElement = (
     `/api/templates/uploadNewProcessingElement`,
     formData,
     {
-      baseURL: `http://localhost:${orgDomainName}`,
+      baseURL: `http://${orgDomainName}`,
       headers: { "Content-Type": "multipart/form-data" },
     }
   );
@@ -77,4 +77,4 @@ export const createProcessingElement = (
 
 export const getPeFromPublisher = (orgDomainName: string, handshakeData: sendHandshakeRequest) =>
     axiosInstance.post<{ message: string }>(`/api/external-peer-configs/sync-peer-configs`, handshakeData,
-    { baseURL: `http://localhost:${orgDomainName}` } );
+    { baseURL: `http://${orgDomainName}` } );

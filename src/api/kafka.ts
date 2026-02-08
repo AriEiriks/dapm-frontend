@@ -5,6 +5,6 @@ export const getKafkaTopics = (orgDomainName: string, includeInternal = false) =
     "/api/kafka/topics",
     {
       params: { includeInternal },
-      baseURL: `http://localhost:${orgDomainName}`,
+      baseURL: `http://${orgDomainName}`,
     }
   );

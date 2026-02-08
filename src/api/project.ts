@@ -43,32 +43,32 @@ export interface CustomizedRole {
 
 export const createProject = (orgDomainName: string, data: createProject) =>
   axiosInstance.post<Project>(`/api/projects/create`, data,
-    { baseURL: `http://localhost:${orgDomainName}` });
+    { baseURL: `http://${orgDomainName}` });
 
 export const getAllProjects = (orgDomainName: string) =>
   axiosInstance.get<Project[]>(`/api/projects/all`,
-    { baseURL: `http://localhost:${orgDomainName}` });
+    { baseURL: `http://${orgDomainName}` });
 
 export const getMyProjects = (orgDomainName: string) =>
   axiosInstance.get<Project[]>(`/api/projects/my-projects`,
-    { baseURL: `http://localhost:${orgDomainName}` });
+    { baseURL: `http://${orgDomainName}` });
 
 export const getProject = (orgPort: string, name: string) =>
   axiosInstance.get<Project>(`/api/projects/${name}`, {
-    baseURL: `http://localhost:${orgPort}`
+    baseURL: `http://${orgPort}`
   });
 export const getProjectsRoles = (orgDomainName: string) =>
   axiosInstance.get<Role[]>(`/api/projects/roles`,
-    { baseURL: `http://localhost:${orgDomainName}` });
+    { baseURL: `http://${orgDomainName}` });
 
 export const createRole = (orgDomainName: string, data: string) =>
   axiosInstance.post<Role>(`/api/projects/roles/add`, { name: data },
-    { baseURL: `http://localhost:${orgDomainName}` });
+    { baseURL: `http://${orgDomainName}` });
 
 export const getProjectRolePermActions = (orgDomainName: string, projectName: string) =>
   axiosInstance.get<ProjectPermAction[]>(
     `/api/project-role-permissions?projectName=${projectName}`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 
@@ -79,7 +79,7 @@ export const getProjectRolePermActionsByRole = (
 ) =>
   axiosInstance.get<ProjectPermAction[]>(
     `/api/project-role-permissions/role/${roleName}?projectName=${projectName}`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const getProjectMembers = (
@@ -88,7 +88,7 @@ export const getProjectMembers = (
 ) =>
   axiosInstance.get<ProjectMember[]>(
     `/api/user-role-assignments?projectName=${projectName}`,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const assignUserRole = (
@@ -98,7 +98,7 @@ export const assignUserRole = (
   axiosInstance.post<ProjectMember>(
     `/api/user-role-assignments/assign`,
     data,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const assignCustomRole = (
@@ -108,9 +108,9 @@ export const assignCustomRole = (
   axiosInstance.post<Project>(
     `/api/projects/assign-roles-and-permissions`,
     data,
-    { baseURL: `http://localhost:${orgDomainName}` }
+    { baseURL: `http://${orgDomainName}` }
   );
 
 export const getPermissions = (orgDomainName: string) =>
   axiosInstance.get<string[]>(`/api/project-role-permissions/permission-actions`,
-    { baseURL: `http://localhost:${orgDomainName}` });
+    { baseURL: `http://${orgDomainName}` });

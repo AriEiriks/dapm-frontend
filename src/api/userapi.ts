@@ -16,12 +16,12 @@ export interface CreateUserRequest {
     // create a get all users function
 export const getAllUsers = (orgDomainName: string) => 
     axiosInstance.get<User[]>(`/api/users/all`,
-    { baseURL: `http://localhost:${orgDomainName}` } );
+    { baseURL: `http://${orgDomainName}` } );
 
 export const getAllAdmins = (orgDomainName: string) => 
     axiosInstance.get<User[]>(`/api/users/admins`,
-    { baseURL: `http://localhost:${orgDomainName}` } );
+    { baseURL: `http://${orgDomainName}` } );
 
 export const createUser = (orgDomainName: string, userData: CreateUserRequest) => 
     axiosInstance.post<{ message: string }>(`/api/auth/register`, userData,
-    { baseURL: `http://localhost:${orgDomainName}` } );
+    { baseURL: `http://${orgDomainName}` } );

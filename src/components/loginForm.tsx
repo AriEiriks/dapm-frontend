@@ -28,9 +28,9 @@ export default function LoginForm() {
             let mappedOrgDomain = values.orgDomainName;
 
             if (values.orgDomainName.toLowerCase() === "orga") {
-                mappedOrgDomain = "8081";
+                mappedOrgDomain = "dapm3:8081";
             } else if (values.orgDomainName.toLowerCase() === "orgb") {
-                mappedOrgDomain = "8082";
+                mappedOrgDomain = "dapm2:8082";
             }
 
             const result = await loginAction(

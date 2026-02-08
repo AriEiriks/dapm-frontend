@@ -5,7 +5,7 @@ export interface SchemaRegistryRegisterResponse {
 }
 
 function getOrgBaseUrl(orgDomainName: string): string {
-  return `http://localhost:${orgDomainName}`;
+  return `http://${orgDomainName}`;
 }
 
 export async function listSchemaSubjects(orgDomainName: string): Promise<string[]> {
