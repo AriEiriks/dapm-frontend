@@ -69,6 +69,8 @@ const CreateExternalSourceForm: React.FC<CreateExternalSourceFormProps> = ({
   const [showOptional, setShowOptional] = useState(false);
   const [optionalSearch, setOptionalSearch] = useState("");
 
+  const LIVE_MODE_KEY = "connect.gcpstorage.source.partition.search.continuous";
+
   const [rawDirty, setRawDirty] = useState(false);
   const lastRawSyncedRef = useRef<string>("");
 
@@ -132,6 +134,7 @@ const handleUploadFile = async (file: File) => {
     setUploadLoading(false);
   }
 };
+
 
   const shortName = (clazz: string) => clazz.split(".").pop() || clazz;
 
@@ -379,7 +382,12 @@ const handleUploadFile = async (file: File) => {
         d.name !== "connector.class" &&
         d.name !== "name" &&
         d.name !== "file"
+        && d.name !== LIVE_MODE_KEY
     );
+  }, [configDefs]);
+
+  const hasLiveModeToggle = useMemo(() => {
+    return (configDefs || []).some((d) => d.name === LIVE_MODE_KEY);
   }, [configDefs]);
 
   const optionalGroups = useMemo(() => {
@@ -632,16 +640,6 @@ const handleUploadFile = async (file: File) => {
             >
               Send schema
             </button>
-
-            <button
-              type="button"
-              className="text-white sm:w-fit w-full sm:px-6 p-2 px-6 bg-transparent border-2 border-white rounded-md disabled:opacity-50"
-              disabled={schemaSubjectsLoading}
-              onClick={refreshSchemaSubjects}
-              title="Refresh subjects"
-            >
-              Refresh
-            </button>
           </div>
         </div>
       
@@ -693,7 +691,7 @@ const handleUploadFile = async (file: File) => {
         ) : (
         <>
 
-          <div className="w-full flex flex-col mb-4">
+          {/* <div className="w-full flex flex-col mb-4">
             <h4 className="text-sm font-bold text-[#ffffff4d]">Schema (optional)</h4>
 
             <div className="signup-input h-fit relative border-2 p-1 border-white w-full flex items-center rounded-md">
@@ -724,7 +722,7 @@ const handleUploadFile = async (file: File) => {
             <div className="text-[11px] text-[#ffffff4d] mt-1">
               This stores the chosen Schema Registry subject in the connector config as <b>dapm.schema.subject</b>.
             </div>
-          </div>
+          </div> */}
 
           {/* Connector Type */}
           <div className="w-full flex flex-col mb-4">
@@ -825,6 +823,46 @@ const handleUploadFile = async (file: File) => {
             )}
           </div>
 
+          {hasLiveModeToggle && (
+            <div className="w-full flex flex-col mb-4">
+              <h4 className="text-sm font-bold text-[#ffffff4d]">Ingestion mode</h4>
+
+              <div className="mt-2 w-fit flex items-center rounded-md border border-white/30 overflow-hidden">
+                <button
+                  type="button"
+                  className={[
+                    "px-3 py-1 text-sm transition-colors",
+                    String(formik.values.config[LIVE_MODE_KEY] ?? "false")
+                      .toLowerCase()
+                      .trim() === "true"
+                      ? "bg-[#ff5722] text-white"
+                      : "bg-transparent text-[#ffffff4d]",
+                  ].join(" ")}
+                  onClick={() => setConfigValue(LIVE_MODE_KEY, "true")}
+                  title="Continuously poll for new objects"
+                >
+                  Live
+                </button>
+
+                <button
+                  type="button"
+                  className={[
+                    "px-3 py-1 text-sm transition-colors border-l border-white/20",
+                    String(formik.values.config[LIVE_MODE_KEY] ?? "false")
+                      .toLowerCase()
+                      .trim() !== "true"
+                      ? "bg-[#ff5722] text-white"
+                      : "bg-transparent text-[#ffffff4d]",
+                  ].join(" ")}
+                  onClick={() => setConfigValue(LIVE_MODE_KEY, "false")}
+                  title="Do not continuously poll (default)"
+                >
+                  Demo
+                </button>
+              </div>
+            </div>
+          )}
+
           
           {/* File (ONLY for FileSource connector type) */}
           {isFileSourceConnector(formik.values.connectorClass) && (
@@ -877,16 +915,6 @@ const handleUploadFile = async (file: File) => {
                   title="Upload a new file to /data"
                 >
                   {uploadLoading ? "Uploading…" : "Upload"}
-                </button>
-
-                <button
-                  type="button"
-                  className="text-white sm:w-fit w-fit px-4 py-2 bg-transparent border-2 border-white rounded-md disabled:opacity-50"
-                  disabled={filesLoading}
-                  onClick={refreshAvailableFiles}
-                  title="Refresh files"
-                >
-                  Refresh
                 </button>
               </div>
 
