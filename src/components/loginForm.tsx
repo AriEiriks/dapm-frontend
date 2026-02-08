@@ -28,8 +28,10 @@ export default function LoginForm() {
             let mappedOrgDomain = values.orgDomainName;
 
             if (values.orgDomainName.toLowerCase() === "orga") {
+                // mappedOrgDomain = "130.225.70.66:8081";
                 mappedOrgDomain = "dapm3:8081";
             } else if (values.orgDomainName.toLowerCase() === "orgb") {
+                // mappedOrgDomain = "130.225.70.65:8082";
                 mappedOrgDomain = "dapm2:8082";
             }
 

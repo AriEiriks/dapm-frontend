@@ -17,7 +17,7 @@ export interface TakeDecisionRequest {
 
 // export const getAllAccessRequests = (orgDomainName: string) => 
 //     axiosInstance.get<AccessRequest[]>(`/api/pipeline/configuration/requests`,
-//     { baseURL: `http://localhost:${orgDomainName}` } );
+//     { baseURL: `http://${orgDomainName}` } );
 
 export const getAllExternalAccessRequests = (orgDomainName: string) => 
     axiosInstance.get<AccessRequest[]>(`/api/pipeline/configuration/external-requests`,
