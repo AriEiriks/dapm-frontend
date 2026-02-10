@@ -87,7 +87,7 @@ export default function ExternalSources() {
   return (
     <div className="w-full h-screen overflow-y-auto pb-10">
       <div className="w-full bg-white md:p-7 p-5 shadow-md flex justify-between">
-        <h1 className="text-2xl font-semibold">External Sources</h1>
+        <h1 className="text-2xl font-semibold">Connectors</h1>
         <div>
           <AddExternalSourceButton />
         </div>

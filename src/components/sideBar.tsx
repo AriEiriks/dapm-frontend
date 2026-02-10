@@ -12,7 +12,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import profile from "../imgs/profile.jpg";
+import profile from "../imgs/user-profile1.png";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Dashboard from "../pages/dashboard";
 export default function SideBar({ isOpen, size, setIsOpen }: { isOpen: boolean; size: boolean; setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
