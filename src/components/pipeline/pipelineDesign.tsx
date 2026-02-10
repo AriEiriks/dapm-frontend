@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useExternalSources } from "../../context/externalSourcesProvider";
+import { useKafka } from "../../context/KafkaProvider";
 
 import {
   ReactFlow,
@@ -213,6 +214,7 @@ export default function PipelineDesign() {
   const { validatePipeline } = usePipeline();
   
   const externalSourcesCtx = useExternalSources();
+  const kafkaCtx = useKafka();
 
 const sourceConnectors = useMemo(() => {
   const all = externalSourcesCtx.externalSources ?? [];
@@ -223,6 +225,34 @@ const getPrimaryTopic = (topics?: string) => {
   const t = (topics ?? "").split(",")[0]?.trim();
   return t || "";
 };
+
+type TopicOption = {
+  topic: string;
+  sourceLabel: string;
+  kind: "connector" | "pipeline";
+};
+
+const connectorTopicOptions = useMemo<TopicOption[]>(() => {
+  return (sourceConnectors || [])
+    .map((c) => {
+      const topic = getPrimaryTopic(c.topics);
+      if (!topic) return null;
+      return { topic, sourceLabel: c.name, kind: "connector" as const };
+    })
+    .filter(Boolean) as TopicOption[];
+}, [sourceConnectors]);
+
+const connectorTopicSet = useMemo(() => {
+  return new Set(connectorTopicOptions.map((x) => x.topic));
+}, [connectorTopicOptions]);
+
+const pipelineTopicOptions = useMemo<TopicOption[]>(() => {
+  const allTopics = kafkaCtx.topics ?? [];
+  // Exclude topics already represented by connectors to avoid duplicates in the dropdown
+  return allTopics
+    .filter((t) => t && !connectorTopicSet.has(t))
+    .map((t) => ({ topic: t, sourceLabel: "Kafka topic", kind: "pipeline" as const }));
+}, [kafkaCtx.topics, connectorTopicSet]);
 
   // when draft changes (e.g., after refreshPipelines), seed local graph state
   // Only run when switching to a new draft
@@ -241,6 +271,11 @@ const getPrimaryTopic = (topics?: string) => {
 
   useEffect(() => {
     externalSourcesCtx.getSources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    kafkaCtx.refreshTopics(false); // false = exclude internal topics
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -354,30 +389,57 @@ const getPrimaryTopic = (topics?: string) => {
 
             {isKafkaTopicKey(fullKey) ? (
               <select
-                disabled={draft?.status !== "draft" || externalSourcesCtx.loadingExternalSources}
+                disabled={
+                      draft?.status !== "draft" ||
+                      externalSourcesCtx.loadingExternalSources ||
+                      kafkaCtx.topicsLoading
+                }
                 className="w-full p-2 rounded text-black"
                 value={val}
                 onChange={(e) => updateSelectedNodeConfig(fullKey, e.target.value)}
               >
                 <option value="">
-                  {externalSourcesCtx.loadingExternalSources
-                    ? "Loading source connectors…"
-                    : "Select a source connector"}
+                  {(externalSourcesCtx.loadingExternalSources || kafkaCtx.topicsLoading)
+                    ? "Loading topics…"
+                    : "Select a topic"}
                 </option>
 
-                {sourceConnectors.map((c) => {
-                  const topicValue = getPrimaryTopic(c.topics);
-                  return (
-                    <option
-                      key={c.name}
-                      value={topicValue}
-                      disabled={!topicValue}
-                      title={topicValue ? `Publishes to: ${topicValue}` : "No topic detected"}
-                    >
-                      {c.name}
+
+
+                <optgroup label="Connector topics">
+                  {connectorTopicOptions.length === 0 ? (
+                    <option value="" disabled>
+                      {externalSourcesCtx.loadingExternalSources ? "Loading…" : "No connector topics found"}
                     </option>
-                  );
-                })}
+                  ) : (
+                    connectorTopicOptions.map((opt) => (
+                      <option
+                        key={`connector-${opt.topic}-${opt.sourceLabel}`}
+                        value={opt.topic}
+                        title={`From connector: ${opt.sourceLabel}`}
+                      >
+                        {opt.topic} ({opt.sourceLabel})
+                      </option>
+                    ))
+                  )}
+                </optgroup>
+
+                <optgroup label="Pipeline topics">
+                  {pipelineTopicOptions.length === 0 ? (
+                    <option value="" disabled>
+                      {kafkaCtx.topicsLoading ? "Loading…" : "No additional topics found"}
+                    </option>
+                  ) : (
+                    pipelineTopicOptions.map((opt) => (
+                      <option key={`topic-${opt.topic}`} value={opt.topic} title="Kafka topic">
+                        {opt.topic}
+                      </option>
+                    ))
+                  )}
+                </optgroup>
+
+
+
               </select>
             ) : (
               <input
@@ -400,7 +462,9 @@ const getPrimaryTopic = (topics?: string) => {
       selectedNode,
       draft?.status,
       externalSourcesCtx.loadingExternalSources,
-      sourceConnectors,
+      kafkaCtx.topicsLoading,
+      connectorTopicOptions,
+      pipelineTopicOptions,
       updateSelectedNodeConfig,
     ]
   );
