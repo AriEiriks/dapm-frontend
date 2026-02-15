@@ -26,6 +26,15 @@ import { usePE } from "../../context/processingElementsProvider";
 import { useAuth } from "../../auth/authProvider";
 import { graphToDesignPipeline } from "../../utils/graphToDesignPipeline";
 
+const INTERNAL_PIPELINE_TOPICS = new Set([
+  "connect-configs-A",
+  "connect-offsets-A",
+  "connect-status-A",
+]);
+
+const isAutoChannelTopic = (t: string) => t.startsWith("Topic-");
+
+
 // -------- Custom Node with conditional ports --------
 function ProcessingNode({ data }: { data: any }) {
   return (
@@ -249,21 +258,20 @@ const connectorTopicSet = useMemo(() => {
 const pipelineTopicOptions = useMemo<TopicOption[]>(() => {
   const allTopics = kafkaCtx.topics ?? [];
   // Exclude topics already represented by connectors to avoid duplicates in the dropdown
+  // Exclude Kafka Connect internal topics from being selectable as pipeline inputs
+
   return allTopics
-    .filter((t) => t && !connectorTopicSet.has(t))
+    .filter((t) => t && !connectorTopicSet.has(t) && !INTERNAL_PIPELINE_TOPICS.has(t) && !isAutoChannelTopic(t))
     .map((t) => ({ topic: t, sourceLabel: "Kafka topic", kind: "pipeline" as const }));
 }, [kafkaCtx.topics, connectorTopicSet]);
 
-  // when draft changes (e.g., after refreshPipelines), seed local graph state
-  // Only run when switching to a new draft
   useEffect(() => {
     if (draft?.graph) {
       setNodes(draft.graph.nodes || []);
       setEdges(draft.graph.edges || []);
     }
-  }, [draft?.name]); // or draft?.id if available
+  }, [draft?.name]); 
 
-  // dependencies are fine here
 
   useEffect(() => {
     pe.getPes();
