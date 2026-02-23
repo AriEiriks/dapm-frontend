@@ -53,6 +53,9 @@ interface PipelineContextType {
   // validatePipeline: (projectName: string, id: string) => Promise<void>;
 }
 
+//for demo
+const quickId = () => `${Date.now()}-${Math.random()}`;
+
 const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
 
 interface PipelineProviderProps {
@@ -106,7 +109,8 @@ async function fetchRemotePipelines(projectName: string): Promise<Pipeline[]> {
         };
       } else {
         return {
-          id: crypto.randomUUID(),
+          id: quickId(),
+          //id: crypto.randomUUID(),
           name: p.pipelineName,
           projectName: p.projectName,
           status: "draft",
@@ -169,7 +173,8 @@ const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) => {
   // Local-only operations
   const createDraft = (projectName: string, name = "Untitled pipeline"): Pipeline => {
     const draft: Pipeline = {
-      id: crypto.randomUUID(),
+      //id: crypto.randomUUID(),
+      id: quickId(),
       name,
       projectName,
       status: "draft",
