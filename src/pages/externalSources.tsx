@@ -137,68 +137,73 @@ export default function ExternalSources() {
                     {(source.type ?? "-").toString().toUpperCase()}
                   </p>
 
-                  <p className="text-sm text-[#757575] truncate" title={source.topics || "-"}>
-                    <span className="font-medium text-[#757575]">Topic: </span>
-                    {source.topics?.trim() ? source.topics : "-"}
-                  </p>
+                  {normalizeState(source.type) !== "SINK" && (
+                  <>
 
-                  {/* Usage (in use / not in use + hover) */}
-                  {(() => {
-                    const usedBy = Array.isArray(source.usedByPipelines)
-                      ? source.usedByPipelines
-                      : [];
+                    <p className="text-sm text-[#757575] truncate" title={source.topics || "-"}>
+                      <span className="font-medium text-[#757575]">Topic: </span>
+                      {source.topics?.trim() ? source.topics : "-"}
+                    </p>
 
-                    const inUse = usedBy.length > 0;
+                    {/* Usage (in use / not in use + hover) */}
+                    {(() => {
+                      const usedBy = Array.isArray(source.usedByPipelines)
+                        ? source.usedByPipelines
+                        : [];
 
-                    return (
-                      <div className="text-sm text-[#757575] mt-1">
-                        <span className="font-medium">Usage:</span>{" "}
+                      const inUse = usedBy.length > 0;
 
-                        <span className="relative inline-flex items-center group">
-                          {/* Badge */}
-                          <span
-                            className={[
-                              "text-xs px-2 py-0.5 rounded border",
-                              inUse
-                                ? "border-green-300 text-green-700 bg-green-50"
-                                : "border-gray-300 text-gray-600 bg-gray-50",
-                            ].join(" ")}
-                          >
-                            {inUse ? "In use" : "Not in use"}
-                          </span>
+                      return (
+                        <div className="text-sm text-[#757575] mt-1">
+                          <span className="font-medium">Usage:</span>{" "}
 
-                          {/* Hover tooltip */}
-                          {inUse && (
-                            <div
-                              className="
-                                pointer-events-none
-                                absolute left-0 top-full mt-2
-                                hidden group-hover:block
-                                z-50
-                                min-w-[220px]
-                                rounded
-                                border border-gray-200
-                                bg-white
-                                shadow-lg
-                                p-2
-                                text-xs
-                                text-gray-700
-                              "
+                          <span className="relative inline-flex items-center group">
+                            {/* Badge */}
+                            <span
+                              className={[
+                                "text-xs px-2 py-0.5 rounded border",
+                                inUse
+                                  ? "border-green-300 text-green-700 bg-green-50"
+                                  : "border-gray-300 text-gray-600 bg-gray-50",
+                              ].join(" ")}
                             >
-                              <div className="font-medium mb-1">Used by pipelines</div>
-                              <ul className="list-disc pl-4 space-y-0.5">
-                                {usedBy.map((pipeline) => (
-                                  <li key={pipeline} className="break-words">
-                                    {pipeline}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                              {inUse ? "In use" : "Not in use"}
+                            </span>
+
+                            {/* Hover tooltip */}
+                            {inUse && (
+                              <div
+                                className="
+                                  pointer-events-none
+                                  absolute left-0 top-full mt-2
+                                  hidden group-hover:block
+                                  z-50
+                                  min-w-[220px]
+                                  rounded
+                                  border border-gray-200
+                                  bg-white
+                                  shadow-lg
+                                  p-2
+                                  text-xs
+                                  text-gray-700
+                                "
+                              >
+                                <div className="font-medium mb-1">Used by pipelines</div>
+                                <ul className="list-disc pl-4 space-y-0.5">
+                                  {usedBy.map((pipeline) => (
+                                    <li key={pipeline} className="break-words">
+                                      {pipeline}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </>
+                  )}
 
                 </div>
 
